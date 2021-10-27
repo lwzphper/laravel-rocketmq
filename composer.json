@@ -1,0 +1,27 @@
+{
+    "name": "lwz/laravel-mq",
+    "type": "library",
+    "homepage": "https://github.com/lwzphper/laravel-mq",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "zhen",
+            "email": "1149243351@qq.com"
+        }
+    ],
+    "require": {
+        "aliyunmq/mq-http-sdk": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Lwz\\LaravelExtend\\MQ\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Lwz\\LaravelExtend\\MQ\\MQServiceProvider"
+            ]
+        }
+    }
+}
