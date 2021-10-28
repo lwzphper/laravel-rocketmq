@@ -51,9 +51,9 @@ class RocketMQClient
 
     private function __construct()
     {
-        $this->_endPoint = config('rocketmq.http_endpoint');
-        $this->_accessId = config('rocketmq.access_key');
-        $this->_accessKey = config('rocketmq.secret_key');
+        $this->_endPoint = config('mq.rocketmq.http_endpoint');
+        $this->_accessId = config('mq.rocketmq.access_key');
+        $this->_accessKey = config('mq.rocketmq.secret_key');
 
         // 设置客户端
         $this->_setClient();

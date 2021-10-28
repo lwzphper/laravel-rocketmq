@@ -45,7 +45,7 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
      * mq 消息状态服务应用类
      * @var MQStatusLogServiceInterface
      */
-    protected string $mqStatusLogSrvApp;
+    protected MQStatusLogServiceInterface $mqStatusLogSrvApp;
 
     /**
      * message tag 对应的处理类
@@ -76,7 +76,7 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
 
         // 配置文件选项
         $this->mqStatusLogSrvApp = config('mq.service_app.status_log');
-        $this->msgTagHandleClass = config('rocketmq.routes');
+        $this->msgTagHandleClass = config('mq.rocketmq.routes');
 
         $this->setConsumer();
     }
@@ -88,7 +88,7 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
     private function setConsumer()
     {
         // 获取配置信息
-        $config = config('rocketmq.group.' . $this->configGroupName);
+        $config = config('mq.rocketmq.group.' . $this->configGroupName);
         // 获取消费者（这里获取全部 msgTag 的消息）
         $this->consumer = RocketMQClient::getInstance()->getClient()->getConsumer($config['instance_id'], $config['topic'], $config['group_id']);
     }
@@ -197,7 +197,7 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
             throw new MQException('[' . $msgTag . ']消息标签 对应的处理类不存在', self::MSG_TAG_CLASS_NOT_FOUND_CODE);
         }
         // 判断 处理类 有没有实现 callbacks 方法
-        $obj = new $class;
+        $obj = app($class);
         if (method_exists($obj, 'callbacks')) {
             throw new MQException('[' . get_class($obj) . '] 消息处理类必须实现 callbacks 方法', self::MSG_CALLBACK_ERROR_CODE);
         }

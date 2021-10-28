@@ -85,7 +85,7 @@ class RocketReliableProducer implements MQReliableProducerInterface
         $this->delayTime = $delayTime;
         $this->configGroupName = $configGroupName;
         // 设置应用类
-        $this->mqStatusLogSrvApp = config('mq.service_app.status_log');
+        $this->mqStatusLogSrvApp = app(MQStatusLogServiceInterface::class);
     }
 
     /**
@@ -108,7 +108,7 @@ class RocketReliableProducer implements MQReliableProducerInterface
     public function publishPrepare(array $payload)
     {
         // 设置状态日志id
-        $statusLogRet = app($this->mqStatusLogSrvApp)->addData($this->msgKey, MQStatusLogEnum::STATUS_WAIT_SEND, $payload, $this->_getMqLogConfig());
+        $statusLogRet = $this->mqStatusLogSrvApp->addData($this->msgKey, MQStatusLogEnum::STATUS_WAIT_SEND, $payload, $this->_getMqLogConfig());
         $this->mqStatusId = $statusLogRet->id;
         // 设置消息体
         $this->payload = $payload;
@@ -131,7 +131,7 @@ class RocketReliableProducer implements MQReliableProducerInterface
             // 获取到 消息id 视为投递成功
             if (isset($publishRet->messageId) && !empty($publishRet->messageId)) {
                 // 更新消息投递状态
-                app($this->mqStatusLogSrvApp)->updateStatusByMQUuId($this->msgKey, MQStatusLogEnum::STATUS_WAIT_CONSUME);
+                $this->mqStatusLogSrvApp->updateStatusByMQUuId($this->msgKey, MQStatusLogEnum::STATUS_WAIT_CONSUME);
             }
         } catch (\Throwable $t) {
             self::_handleError($t, $this->msgKey, $this->payload, $this->_getMqLogConfig());
@@ -146,7 +146,7 @@ class RocketReliableProducer implements MQReliableProducerInterface
     private function _sendMsg(): TopicMessage
     {
         // 获取配置信息
-        $config = config('rocketmq.group.' . $this->configGroupName);
+        $config = config('mq.rocketmq.group.' . $this->configGroupName);
         // 获取生产者
         $producer = RocketMQClient::getInstance()->getClient()->getProducer($config['instance_id'], $config['topic']);
 

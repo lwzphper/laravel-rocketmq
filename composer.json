@@ -10,7 +10,8 @@
         }
     ],
     "require": {
-        "aliyunmq/mq-http-sdk": "^1.0"
+        "aliyunmq/mq-http-sdk": "^1.0",
+        "zedisdog/laravel-schema-extend": "^1.4"
     },
     "autoload": {
         "psr-4": {
