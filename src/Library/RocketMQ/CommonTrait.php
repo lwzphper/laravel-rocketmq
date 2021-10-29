@@ -10,9 +10,22 @@ namespace Lwz\LaravelExtend\MQ\Library\RocketMQ;
 
 use Illuminate\Support\Facades\Log;
 use Lwz\LaravelExtend\MQ\Interfaces\MQErrorLogServiceInterface;
+use MQ\Model\TopicMessage;
 
 trait CommonTrait
 {
+    /**
+     * 检查是否投递成功
+     * @param TopicMessage $publishRet 投递的结果
+     * @return bool
+     * @author lwz
+     */
+    private function _checkIsProduceSuccess(TopicMessage $publishRet): bool
+    {
+        // 如果返回了 message id ，则视为投递成功
+        return isset($publishRet->messageId) && !empty($publishRet->messageId);
+    }
+
     /**
      * 处理错误
      * @param \Throwable $t

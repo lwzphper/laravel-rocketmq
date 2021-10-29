@@ -18,6 +18,7 @@ use MQ\Model\TopicMessage;
 class RocketReliableProducer implements MQReliableProducerInterface
 {
     use CommonTrait;
+
     /**
      * 消息生成流程：
      * 1. producePrepare: 提交DB事务时，保存消息状态
@@ -92,12 +93,13 @@ class RocketReliableProducer implements MQReliableProducerInterface
      * 简单的推送队列（不会记录消息状态，主要用户消息重新投递）
      * @param array $payload
      * @return mixed
+     * @throws MQException
      * @author lwz
      */
-    public function simplePublish(array $payload)
+    public function simplePublish(array $payload): TopicMessage
     {
         $this->payload = $payload;
-        $this->_sendMsg();
+        return $this->_sendMsg();
     }
 
     /**
@@ -129,7 +131,7 @@ class RocketReliableProducer implements MQReliableProducerInterface
             // 发送消息
             $publishRet = $this->_sendMsg();
             // 获取到 消息id 视为投递成功
-            if (isset($publishRet->messageId) && !empty($publishRet->messageId)) {
+            if ($this->_checkIsProduceSuccess($publishRet)) {
                 // 更新消息投递状态
                 $this->mqStatusLogSrvApp->updateStatusByMQUuId($this->msgKey, MQStatusLogEnum::STATUS_WAIT_CONSUME);
             }
@@ -142,12 +144,17 @@ class RocketReliableProducer implements MQReliableProducerInterface
     /**
      * 发送消息
      * @return TopicMessage
+     * @throws MQException
      * @author lwz
      */
     private function _sendMsg(): TopicMessage
     {
         // 获取配置信息
         $config = config('mq.rocketmq.group.' . $this->configGroupName);
+        if (is_null($config)) {
+            throw new MQException("mq分组不存在，消息投递失败：" . $this->configGroupName);
+        }
+
         // 获取生产者
         $producer = RocketMQClient::getInstance()->getClient()->getProducer($config['instance_id'], $config['topic']);
 

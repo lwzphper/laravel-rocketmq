@@ -42,10 +42,8 @@ class MQStatusLogRepository extends RepositoryAbstract
         $gtSeconds = config('mq.reproduce_time');
 
         return MQStatusLog::select(['id', 'mq_uuid', 'status', 'mq_config', 'payload'])
-            ->setWhereQuery([
-                'max_num_lte' => $maxNum,
-                'updated_at_lt' => date('Y-m-d H:i:s', time() - $gtSeconds)
-            ])
+            ->where('retry_num', '<', $maxNum)
+            ->where('updated_at', '<', date('Y-m-d H:i:s', time() - $gtSeconds))
             ->limit($num)
             ->get();
     }

@@ -191,7 +191,7 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
         }
         // 判断 处理类 有没有实现 callbacks 方法
         $obj = app($class);
-        if (method_exists($obj, 'callbacks')) {
+        if (!method_exists($obj, 'callbacks')) {
             throw new MQException('[' . get_class($obj) . '] 消息处理类必须实现 callbacks 方法', self::MSG_CALLBACK_ERROR_CODE);
         }
         return $obj;

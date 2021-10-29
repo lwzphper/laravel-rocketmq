@@ -8,6 +8,7 @@
 namespace Lwz\LaravelExtend\MQ;
 
 use Illuminate\Support\ServiceProvider;
+use Lwz\LaravelExtend\MQ\Commands\MQReproduceFailMsg;
 use Lwz\LaravelExtend\MQ\Interfaces\MQErrorLogServiceInterface;
 use Lwz\LaravelExtend\MQ\Interfaces\MQReliableConsumerInterface;
 use Lwz\LaravelExtend\MQ\Interfaces\MQReliableProducerInterface;
@@ -18,6 +19,9 @@ use Lwz\LaravelExtend\MQ\Services\MQStatusLogService;
 
 class MQServiceProvider extends ServiceProvider
 {
+    protected array $command = [
+        MQReproduceFailMsg::class,
+    ];
 
     public function register()
     {
@@ -32,6 +36,9 @@ class MQServiceProvider extends ServiceProvider
 
         // 发布配置文件
         $this->registerPublishing();
+
+        // 注册命令
+        $this->commands($this->command);
     }
 
     /**

@@ -47,11 +47,11 @@
    ```
 
 
-### 使用
+### RocketMQ使用
 
 > 目前只支持 RocketMQ
 
-#### RocketMQ 生产消息示例
+#### 1. 生产消息示例
 
 ````php
 // 第一步：创建生产者对象
@@ -74,11 +74,29 @@ DB::transaction(function () use ($mqObj) {
 $mqObj->publishMessage();
 ````
 
-#### RocketMQ 消费消息示例
+#### 2. 消费消息示例
+
+> 注意：msg_tag 必须在 `mq.php` 配置文件中的`routes`指定消费类，否则消费失败
 
 ```shell
 app(MQReliableConsumerAbstract::class, [
-	'config_group' => $this->option('group') ?? config('rocketmq.default')
+	'config_group' => 'xiansuo'
 ])->consumer();
+```
+
+#### 3. 消息幂等性处理
+
+msg_tag 对应的消费类，需要实现 `callbacks(string $msgBody, string $msgKey)` 方法。
+
+msgBody: 消息体
+
+msgKey：消息唯一标识（可用于做幂等性处理）
+
+### 守护进程，监听失败消息重新投递
+
+> 由于所有消息都记录在同一张表里，因此只需要启动一个 进程 即可，否则会产生多次投递的问题
+
+```shell
+php artisan mq:reproduce
 ```
 
