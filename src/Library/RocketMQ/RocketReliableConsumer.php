@@ -42,12 +42,6 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
     protected int $waitSeconds;
 
     /**
-     * mq 消息状态服务应用类
-     * @var MQStatusLogServiceInterface
-     */
-    protected MQStatusLogServiceInterface $mqStatusLogSrvApp;
-
-    /**
      * message tag 对应的处理类
      * @var array
      */
@@ -68,14 +62,13 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
     public function __construct(string $configGroupName, int $msgNum = 3, int $waitSeconds = 3)
     {
         // 更改日志驱动
-        Log::setDefaultDriver('queueLog');
+        Log::setDefaultDriver('queuelog');
 
         $this->configGroupName = $configGroupName;
         $this->msgNum = $msgNum;
         $this->waitSeconds = $waitSeconds;
 
         // 配置文件选项
-        $this->mqStatusLogSrvApp = config('mq.service_app.status_log');
         $this->msgTagHandleClass = config('mq.rocketmq.routes');
 
         $this->setConsumer();
@@ -135,7 +128,7 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
                     $this->_getMsgTagHandleObjOrFail($msgTag)->callbacks($msgBody, $msgKey);
 
                     // 如果处理消息没有抛出异常，则视为处理成功，处理成功删除消息状态记录
-                    $msgKey && app($this->mqStatusLogSrvApp)->deleteByMQUuid($msgKey);
+                    $msgKey && app(MQStatusLogServiceInterface::class)->deleteByMQUuid($msgKey);
 
                     // 消息确认
                     $this->consumer->ackMessage([$message->getReceiptHandle()]);

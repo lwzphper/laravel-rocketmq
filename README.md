@@ -1,5 +1,10 @@
-### 使用步骤
-1. 安装
+### 实现原理
+
+![image-20211029104801989](images/image-20211029104801989.png)
+
+### 安装
+
+1. 下载组件包
    ```shell
    composer require lwz/laravel-mq
    ```
@@ -12,7 +17,18 @@
    php artisan vendor:publish --provider="Lwz\LaravelExtend\MQ\MQServiceProvider"
    ```
 
-3. 创建基础表（如果表已存在，跳过）
+   默认的日志驱动如下，如果需要配置，在配置文件 `logging.php` 的 `channels` 中对 `queuelog` 进行修改
+
+   ```
+   'queuelog' => [
+       'driver' => 'daily',
+       'path' => storage_path('logs/queue.log'),
+       'level' => env('LOG_LEVEL', 'debug'),
+       'days' => 50,
+   ],
+   ```
+
+3. 创建基础表（**如果表已存在，跳过**）
 
    > mq_status_log：队列状态日志表
    >
@@ -30,5 +46,39 @@
     ],
    ```
 
-5. 监听失败队列
+
+### 使用
+
+> 目前只支持 RocketMQ
+
+#### RocketMQ 生产消息示例
+
+````php
+// 第一步：创建生产者对象
+$mqObj = app(MQReliableProducerInterface::class,[
+    'msg_tag' => '消息标签',
+    'delay_time' => '延迟时间（可以不传 或 传 null）',
+    'config_group' => '配置文件的分组名',
+    'msg_key' => '消息唯一标识（如果没传会默认生成一个唯一字符串），如：订单号',
+]);
+
+DB::transaction(function () use ($mqObj) {
+    // todo 业务代码
+    // xxxxxxxx
+    // 第二步：调用 publishPrepare() 方法，记录消息状态
+    $data = []; // 需要推送到队列的数据
+    $mqObj->publishPrepare($data);
+});
+
+// 第三步：将消息推送到队列中
+$mqObj->publishMessage();
+````
+
+#### RocketMQ 消费消息示例
+
+```shell
+app(MQReliableConsumerAbstract::class, [
+	'config_group' => $this->option('group') ?? config('rocketmq.default')
+])->consumer();
+```
 

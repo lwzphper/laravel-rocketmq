@@ -53,7 +53,7 @@ class RocketReliableProducer implements MQReliableProducerInterface
      * mq 消息状态服务应用类
      * @var MQStatusLogServiceInterface
      */
-    protected string $mqStatusLogSrvApp;
+    protected MQStatusLogServiceInterface $mqStatusLogSrvApp;
 
     /**
      * 队列状态id
@@ -78,7 +78,7 @@ class RocketReliableProducer implements MQReliableProducerInterface
     public function __construct(string $msgTag, string $configGroupName, ?string $msgKey = null, ?int $delayTime = null)
     {
         // 更改日志驱动
-        Log::setDefaultDriver('queueLog');
+        Log::setDefaultDriver('queuelog');
 
         $this->msgTag = $msgTag;
         $this->msgKey = $msgKey ?: session_create_id('mq'); // 如果没有设置消息key，自动生成一个唯一标识
@@ -119,7 +119,7 @@ class RocketReliableProducer implements MQReliableProducerInterface
      * @throws MQException
      * @author lwz
      */
-    public function publishMessage()
+    public function publishMessage(): TopicMessage
     {
         if (!$this->mqStatusId) {
             throw new MQException('需要先调用 publishPrepare 方法');
@@ -133,6 +133,7 @@ class RocketReliableProducer implements MQReliableProducerInterface
                 // 更新消息投递状态
                 $this->mqStatusLogSrvApp->updateStatusByMQUuId($this->msgKey, MQStatusLogEnum::STATUS_WAIT_CONSUME);
             }
+            return $publishRet;
         } catch (\Throwable $t) {
             self::_handleError($t, $this->msgKey, $this->payload, $this->_getMqLogConfig());
         }
