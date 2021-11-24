@@ -10,8 +10,7 @@
         }
     ],
     "require": {
-        "aliyunmq/mq-http-sdk": "^1.0",
-        "zedisdog/laravel-schema-extend": "^1.4"
+        "aliyunmq/mq-http-sdk": "^1.0"
     },
     "autoload": {
         "psr-4": {
@@ -24,5 +23,8 @@
                 "Lwz\\LaravelExtend\\MQ\\MQServiceProvider"
             ]
         }
+    },
+    "require-dev": {
+        "zedisdog/laravel-schema-extend": "^1.4"
     }
 }
