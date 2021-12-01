@@ -7,8 +7,8 @@
 
 namespace Lwz\LaravelExtend\MQ\Library\RocketMQ;
 
-
 use Illuminate\Support\Facades\Log;
+use Lwz\LaravelExtend\MQ\Constants\MQConst;
 use Lwz\LaravelExtend\MQ\Enum\MQStatusLogEnum;
 use Lwz\LaravelExtend\MQ\Exceptions\MQException;
 use Lwz\LaravelExtend\MQ\Interfaces\MQReliableProducerInterface;
@@ -27,10 +27,16 @@ class RocketReliableProducer implements MQReliableProducerInterface
      */
 
     /**
-     * 消息标签。项目中使用配置文件的 routes key 作为 消息标签
+     * 消息分组
      * @var string
      */
-    protected string $msgTag;
+    protected string $topicGroup;
+
+    /**
+     * 消息标签
+     * @var string|null
+     */
+    protected ?string $msgTag;
 
     /**
      * 消息的 key 。用于唯一标识消息，可以做幂等性处理（如：订单号）
@@ -43,12 +49,6 @@ class RocketReliableProducer implements MQReliableProducerInterface
      * @var int|null
      */
     protected ?int $delayTime;
-
-    /**
-     * 配置文件的分组名（包含：topic、实例、分组id）
-     * @var string
-     */
-    protected string $configGroupName;
 
     /**
      * mq 消息状态服务应用类
@@ -70,21 +70,24 @@ class RocketReliableProducer implements MQReliableProducerInterface
 
     /**
      * RocketProducer constructor.
-     * @param string $msgTag 消息标签。项目中使用配置文件的 routes key 作为 消息标签
-     *  （tips：Topic与Tag都是业务上用来归类的标识，区分在于Topic是一级分类，而Tag可以理解为是二级分类）
-     * @param string $configGroupName 配置文件的分组名（包含：topic、实例、分组id）
+     * @param string $topicGroup topic所属分组
+     * @param string|null $msgTag 消息标签
      * @param string|null $msgKey 消息的 key 。用于唯一标识消息，可以做幂等性处理（如：订单号）
      * @param int|null $delayTime 延迟时间戳（具体时间的时间戳，如：strotime(2022-10-10 10:32:43)）
      */
-    public function __construct(string $msgTag, string $configGroupName, ?string $msgKey = null, ?int $delayTime = null)
+    public function __construct(string $topicGroup, ?string $msgTag = null, ?string $msgKey = null, ?int $delayTime = null)
     {
         // 更改日志驱动
-        Log::setDefaultDriver('queuelog');
+        Log::setDefaultDriver(config('mq.log_driver'));
 
+        // 设置mq基本信息
+        $this->_setMQInfo($topicGroup);
+
+        $this->topicGroup = $topicGroup;
         $this->msgTag = $msgTag;
         $this->msgKey = $msgKey ?: session_create_id('mq'); // 如果没有设置消息key，自动生成一个唯一标识
         $this->delayTime = $delayTime;
-        $this->configGroupName = $configGroupName;
+
         // 设置应用类
         $this->mqStatusLogSrvApp = app(MQStatusLogServiceInterface::class);
     }
@@ -138,6 +141,7 @@ class RocketReliableProducer implements MQReliableProducerInterface
             return $publishRet;
         } catch (\Throwable $t) {
             self::_handleError($t, $this->msgKey, $this->payload, $this->_getMqLogConfig());
+            throw new MQException('消息生成失败');
         }
     }
 
@@ -149,14 +153,8 @@ class RocketReliableProducer implements MQReliableProducerInterface
      */
     private function _sendMsg(): TopicMessage
     {
-        // 获取配置信息
-        $config = config('mq.rocketmq.group.' . $this->configGroupName);
-        if (is_null($config)) {
-            throw new MQException("mq分组不存在，消息投递失败：" . $this->configGroupName);
-        }
-
         // 获取生产者
-        $producer = RocketMQClient::getInstance()->getClient()->getProducer($config['instance_id'], $config['topic']);
+        $producer = RocketMQClient::getInstance()->getClient()->getProducer($this->instanceId, $this->topic);
 
         // 发布消息
         $payload = json_encode($this->payload);
@@ -170,6 +168,7 @@ class RocketReliableProducer implements MQReliableProducerInterface
         }
 
         $publishRet = $producer->publishMessage($publishMessage);
+
         // 记录日志
         Log::info(sprintf('消息生产成功。[msg_tag] %s; [msg_key] %s; [msg_body] %s', $this->msgTag, $this->msgKey, $payload));
 
@@ -184,9 +183,11 @@ class RocketReliableProducer implements MQReliableProducerInterface
     private function _getMqLogConfig(): array
     {
         return [
+            'mq_type' => MQConst::TYPE_ROCKETMQ,
+            'topic_group' => $this->topicGroup,
             'msg_tag' => $this->msgTag,
+            'msg_key' => $this->msgKey,
             'delay_time' => $this->delayTime,
-            'config_group' => $this->configGroupName,
         ];
     }
 }

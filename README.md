@@ -45,6 +45,8 @@
         Lwz\LaravelExtend\MQ\MQServiceProvider::class,
     ],
    ```
+   
+5. 队列日志驱动 `queuelog`，如果需要自定义在 `logging.php` 中新增 `queuelog` 驱动
 
 
 ### RocketMQ使用

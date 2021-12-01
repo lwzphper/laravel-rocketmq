@@ -7,7 +7,6 @@
 
 namespace Lwz\LaravelExtend\MQ\Library\RocketMQ;
 
-
 use Illuminate\Support\Facades\Log;
 use Lwz\LaravelExtend\MQ\Exceptions\MQException;
 use Lwz\LaravelExtend\MQ\Interfaces\MQReliableConsumerInterface;
@@ -55,16 +54,17 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
 
     /**
      * RocketReliableConsumer constructor.
-     * @param string $configGroupName 配置文件的分组名（包含：topic、实例、分组id）
+     * @param string $msgGroup 消息分组
      * @param int $msgNum 每次消费的消息数量(最多可设置为16条)
      * @param int $waitSeconds 长轮询时间（最多可设置为30秒）
+     * @param callable $handleFn 处理消息的回调函数
      */
-    public function __construct(string $configGroupName, int $msgNum = 3, int $waitSeconds = 3)
+    public function __construct(string $msgGroup, callable $handleFn, int $msgNum = 3, int $waitSeconds = 3)
     {
         // 更改日志驱动
-        Log::setDefaultDriver('queuelog');
+        Log::setDefaultDriver(config('mq.log_driver'));
 
-        $this->configGroupName = $configGroupName;
+        $this->configGroupName = $msgGroup;
         $this->msgNum = $msgNum;
         $this->waitSeconds = $waitSeconds;
 

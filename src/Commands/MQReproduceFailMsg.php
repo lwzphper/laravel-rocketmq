@@ -3,6 +3,7 @@
 namespace Lwz\LaravelExtend\MQ\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 use Lwz\LaravelExtend\MQ\Exceptions\MQException;
 use Lwz\LaravelExtend\MQ\Interfaces\MQReliableProducerInterface;
 use Lwz\LaravelExtend\MQ\Interfaces\MQStatusLogServiceInterface;
@@ -33,24 +34,22 @@ class MQReproduceFailMsg extends Command
     {
         $mqStatusLogApp = app(MQStatusLogServiceInterface::class);
         while (true) {
+            /**
+             * @var $collection Collection
+             */
             // 获取重试失败的数量
             $collection = $mqStatusLogApp->getReproduceData(30);
             if ($collection->isEmpty()) {
                 sleep(5);
                 continue;
             }
-
             // 重新投递
             $collection->each(function ($item) {
                 try {
+
                     // 获取配置信息
                     $config = json_decode($item->mq_config, true);
-                    app(MQReliableProducerInterface::class, [
-                        'msg_tag' => $config['msg_tag'],
-                        'delay_time' => $config['delay_time'],
-                        'config_group' => $config['config_group'],
-                        'msg_key' => $item->mq_uuid,
-                    ])->simplePublish(json_decode($item->payload, true));
+                    app(MQReliableProducerInterface::class, $config)->simplePublish(json_decode($item->payload, true));
                 } catch (MQException $exception) {
                     // 捕获异常。如果这里记录日志，如果有异常的话，会不断写入日志文件，导致文件很大
                     // 所以这里不做任何处理

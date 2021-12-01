@@ -8,7 +8,7 @@
 namespace Lwz\LaravelExtend\MQ\Exceptions;
 
 
-class MQException extends \Exception
+class MQException extends \RuntimeException
 {
     protected $code = 1600;
 }

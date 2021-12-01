@@ -9,11 +9,48 @@ namespace Lwz\LaravelExtend\MQ\Library\RocketMQ;
 
 
 use Illuminate\Support\Facades\Log;
+use Lwz\LaravelExtend\MQ\Exceptions\MQException;
 use Lwz\LaravelExtend\MQ\Interfaces\MQErrorLogServiceInterface;
 use MQ\Model\TopicMessage;
 
 trait CommonTrait
 {
+    /**
+     * 实例id
+     * @var string|null
+     */
+    protected ?string $instanceId;
+
+    /**
+     * topic
+     * @var string
+     */
+    protected string $topic;
+
+    /**
+     * 设置MQ信息
+     * @param string $topicGroup topic所属分组
+     * @throws MQException
+     * @author lwz
+     */
+    protected function _setMQInfo(string $topicGroup)
+    {
+        // 获取分组信息
+        $topicInfo = config('mq.rocketmq.topic_group.' . $topicGroup);
+        if (empty($topicInfo) || !is_array($topicInfo)) {
+            throw new MQException('[mq error] 无法找到topic分组信息：' . $topicInfo);
+        }
+
+        // topic不能为空
+        $topic = $topicInfo['topic'] ?? null;
+        if (empty($topic)) {
+            throw new MQException('[mq error] 请配置' . $topicGroup . '分组的topic信息：');
+        }
+
+        $this->instanceId = $topicInfo['instance_id'] ?? null;
+        $this->topic = $topicInfo['topic'];
+    }
+
     /**
      * 检查是否投递成功
      * @param TopicMessage $publishRet 投递的结果
