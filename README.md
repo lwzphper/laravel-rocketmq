@@ -93,7 +93,7 @@ return [
 ````php
 // 第一步：创建生产者对象
 $mqObj = app(MQReliableProducerInterface::class,[
-    'topic_group' => 'scrm', // topic分组名
+    'topic_group' => 'scrm', // topic组名
     'msg_tag' => 'clue', // 消息标签组名
     //            'delay_time' => '延迟时间（具体的某个时间点，可以不传 或 传 null）',
     //            'msg_key' => '消息唯一标识（如果没传会默认生成一个唯一字符串），如：订单号',
@@ -117,7 +117,7 @@ $mqObj->publishMessage();
 
 ```shell
 app(MQReliableConsumerInterface::class, [
-    'topic_group' => 'scrm', // topic分组名
+    'topic_group' => 'scrm', // topic组名
     'consume_group' => 'add_clue', // 消费组名
 ])->consumer();
 ```
