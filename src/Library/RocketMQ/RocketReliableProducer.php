@@ -13,11 +13,12 @@ use Lwz\LaravelExtend\MQ\Enum\MQStatusLogEnum;
 use Lwz\LaravelExtend\MQ\Exceptions\MQException;
 use Lwz\LaravelExtend\MQ\Interfaces\MQReliableProducerInterface;
 use Lwz\LaravelExtend\MQ\Interfaces\MQStatusLogServiceInterface;
+use Lwz\LaravelExtend\MQ\Traits\ProducerTrait;
 use MQ\Model\TopicMessage;
 
 class RocketReliableProducer implements MQReliableProducerInterface
 {
-    use CommonTrait;
+    use CommonTrait, ProducerTrait;
 
     /**
      * 消息生成流程：
@@ -37,12 +38,6 @@ class RocketReliableProducer implements MQReliableProducerInterface
      * @var string|null
      */
     protected ?string $msgTag;
-
-    /**
-     * 消息的 key 。用于唯一标识消息，可以做幂等性处理（如：订单号）
-     * @var string|null
-     */
-    protected ?string $msgKey;
 
     /**
      * 延迟时间戳（具体时间的时间戳，如：strotime(2022-10-10 10:32:43)）
@@ -77,19 +72,16 @@ class RocketReliableProducer implements MQReliableProducerInterface
      */
     public function __construct(string $topicGroup, ?string $msgTag = null, ?string $msgKey = null, ?int $delayTime = null)
     {
-        // 更改日志驱动
-        Log::setDefaultDriver(config('mq.log_driver'));
+        // 初始操作
+        $this->init();
 
         // 设置mq基本信息
         $this->_setMQInfo($topicGroup);
 
         $this->topicGroup = $topicGroup;
         $this->msgTag = $msgTag;
-        $this->msgKey = $msgKey ?: session_create_id('mq'); // 如果没有设置消息key，自动生成一个唯一标识
+        $this->msgKey = $msgKey ?: $this->createMsgKey(); // 如果没有设置消息key，自动生成一个唯一标识
         $this->delayTime = $delayTime;
-
-        // 设置应用类
-        $this->mqStatusLogSrvApp = app(MQStatusLogServiceInterface::class);
     }
 
     /**
@@ -110,14 +102,14 @@ class RocketReliableProducer implements MQReliableProducerInterface
      * @param array $payload 消息内容
      * @author lwz
      */
-    public function publishPrepare(array $payload)
+    /*public function publishPrepare(array $payload)
     {
         // 设置状态日志id
-        $statusLogRet = $this->mqStatusLogSrvApp->addData($this->msgKey, MQStatusLogEnum::STATUS_WAIT_SEND, $payload, $this->_getMqLogConfig());
+        $statusLogRet = $this->mqStatusLogSrvApp->addData($this->msgKey, MQStatusLogEnum::STATUS_WAIT_SEND, $payload, $this->getMqLogConfig());
         $this->mqStatusId = $statusLogRet->id;
         // 设置消息体
         $this->payload = $payload;
-    }
+    }*/
 
     /**
      * 发布消息
@@ -140,7 +132,7 @@ class RocketReliableProducer implements MQReliableProducerInterface
             }
             return $publishRet;
         } catch (\Throwable $t) {
-            self::_handleError($t, $this->msgKey, $this->payload, $this->_getMqLogConfig());
+            self::_handleError($t, $this->msgKey, $this->payload, $this->getMqLogConfig());
             throw new MQException('消息生成失败');
         }
     }
@@ -180,7 +172,7 @@ class RocketReliableProducer implements MQReliableProducerInterface
      * @return array
      * @author lwz
      */
-    private function _getMqLogConfig(): array
+    protected function getMqLogConfig(): array
     {
         return [
             'mq_type' => MQConst::TYPE_ROCKETMQ,

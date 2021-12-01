@@ -39,6 +39,8 @@ class MQProducer
         switch (self::getMQType($params)) {
             case MQConst::TYPE_ROCKETMQ:
                 return self::_createRocketMQProducer($params);
+            case MQConst::TYPE_REDIS:
+//                return
             default:
                 throw new MQException('目前支持该队列');
         }
