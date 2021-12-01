@@ -53,8 +53,8 @@ class MQServiceProvider extends ServiceProvider
         });
 
         // 队列消费者注册
-        $this->app->bind(MQReliableConsumerInterface::class, function ($app, array $params = [], callable $handleFn) {
-            return MQProducer::getConsumer($params, $handleFn);
+        $this->app->bind(MQReliableConsumerInterface::class, function ($app, array $params = []) {
+            return MQProducer::getConsumer($params);
         });
 
         // 消息状态

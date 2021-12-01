@@ -2,10 +2,13 @@
 /**
  * 消息队列相关配置
  */
+
+use Lwz\LaravelExtend\MQ\Constants\MQConst;
+
 return [
-    'mq_type' => 'RocketMQ', // 队列类型（目前只支持 RocketMQ）。 RocketMQ、RabbitMQ、Kafka、Redis
+    'mq_type' => MQConst::TYPE_ROCKETMQ, // 队列类型（目前只支持 RocketMQ、Redis）。 RocketMQ、RabbitMQ、Kafka、Redis
     'reproduce_max_num' => 5, // 最大重新投递次数
-    'reproduce_time' => 600, // 重新投递的时间（相当于更新时间）
+    'reproduce_time' => 600, // 重新投递的时间（投递多久后没有被消费，重新投递）
     'log_driver' => 'queuelog', // 日志驱动
 
     /**
@@ -13,8 +16,6 @@ return [
      * instance_id => topic => message tag
      */
     'rocketmq' => [
-        // 默认分组
-        'default' => 'default',
         /*
         |--------------------------------------------------------------------------
         | Default RocketMQ Connection Config
@@ -25,17 +26,17 @@ return [
         'access_key' => env('ROCKETMQ_ACCESS_KEY'),
         'secret_key' => env('ROCKETMQ_SECRET_KEY'),
         'topic_group' => [ // topic分组
-            'scrm' => [ // scrm实例
-                'instance_id' => '实例id',
-                'topic' => 'topic',
-            ]
+//            'scrm' => [ // scrm实例
+//                'instance_id' => '实例id',
+//                'topic' => 'topic名称',
+//            ]
         ],
         'consume_group' => [ // 消费者分组
-            'add_clue' => [ // 消费组名称
-                'msg_tag' => '', // 消息标签
-                'group_id' => 'scrm_clue', // 分组id
-                'handle_class' => '', // 处理的消息的类名。必须继承 Lwz\LaravelExtend\MQ\Interfaces\ConsumerInterface 接口
-            ],
+//            'add_clue' => [ // 消费组名称
+//                'msg_tag' => 'clue', // 消息标签
+//                'group_id' => 'scrm_clue', // 分组id
+//                'handle_class' => '', // 处理的消息的类名。必须继承 Lwz\LaravelExtend\MQ\Interfaces\ConsumerInterface 接口
+//            ],
         ],
     ]
 ];

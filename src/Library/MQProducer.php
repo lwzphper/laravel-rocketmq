@@ -52,16 +52,15 @@ class MQProducer
      *      msg_tag: 消息标签
      *      msg_num: 每次消费的消息数量(最多可设置为16条)
      *      wait_seconds: 长轮询时间（最多可设置为30秒）
-     * @param callable $handleFn 处理消费的函数
      * @return MQReliableConsumerInterface
      * @throws MQException
      * @author lwz
      */
-    public static function getConsumer(array $params, callable $handleFn): MQReliableConsumerInterface
+    public static function getConsumer(array $params): MQReliableConsumerInterface
     {
         switch (self::getMQType($params)) {
             case 'RocketMQ':
-                return self::_createRocketMQConsumer($params, $handleFn);
+                return self::_createRocketMQConsumer($params);
             default:
                 throw new MQException('[mq error] 目前支持该队列');
         }
@@ -108,16 +107,16 @@ class MQProducer
      *   config_group: 配置文件中的 分组名
      *   msg_num: 每次消费的消息数量(最多可设置为16条)
      *   wait_seconds: 长轮询时间（最多可设置为30秒）
-     * @param callable $handleFn 处理消息的回调函数
      * @return MQReliableConsumerInterface
      * @author lwz
      */
-    protected static function _createRocketMQConsumer(array $params, callable $handleFn): MQReliableConsumerInterface
+    protected static function _createRocketMQConsumer(array $params): MQReliableConsumerInterface
     {
-        self::_checkRocketMQParamsOrFail($params);
+        self::_checkRocketMQParamsOrFail($params, true);
+
         return new RocketReliableConsumer(
-            $params['msg_group'],
-            $handleFn,
+            $params['topic_group'],
+            $params['consume_group'],
             $params['msg_num'] ?? 3,
             $params['wait_seconds'] ?? 3
         );
@@ -126,14 +125,19 @@ class MQProducer
     /**
      * 获取 RocketMQ 的消息信息
      * @param array $params 参数
-     * @throws MQException
+     * @param bool $isConsume 是否消费消息
      * @author lwz
      */
-    protected static function _checkRocketMQParamsOrFail(array $params)
+    protected static function _checkRocketMQParamsOrFail(array $params, bool $isConsume = false)
     {
         // 必要的参数验证
         if (empty($params['topic_group'] ?? null)) {
             throw new MQException('[mq error] 缺少参数：topic_group');
+        }
+
+        // 消费消息，消费组必填
+        if ($isConsume && empty($params['consume_group'] ?? null)) {
+            throw new MQException('[mq error] 缺少参数：consume_group');
         }
     }
 

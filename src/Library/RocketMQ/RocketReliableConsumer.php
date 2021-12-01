@@ -9,6 +9,7 @@ namespace Lwz\LaravelExtend\MQ\Library\RocketMQ;
 
 use Illuminate\Support\Facades\Log;
 use Lwz\LaravelExtend\MQ\Exceptions\MQException;
+use Lwz\LaravelExtend\MQ\Interfaces\MQConsumerInterface;
 use Lwz\LaravelExtend\MQ\Interfaces\MQReliableConsumerInterface;
 use Lwz\LaravelExtend\MQ\Interfaces\MQStatusLogServiceInterface;
 use MQ\Exception\MessageNotExistException;
@@ -19,14 +20,29 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
 {
     use CommonTrait;
 
-    const MSG_TAG_CLASS_NOT_FOUND_CODE = 4001; // 消息标签对应的处理类不存在
-    const MSG_CALLBACK_ERROR_CODE = 4002; // 消息处理类的回调函数不存在
-
     /**
-     * 配置文件的分组名（包含：topic、实例、分组id）
+     * 分组id
      * @var string
      */
-    protected string $configGroupName;
+    protected string $groupId;
+
+    /**
+     * 消息标签
+     * @var string|null
+     */
+    protected ?string $msgTag;
+
+    /**
+     * topic组
+     * @var string
+     */
+    protected string $topicGroup;
+
+    /**
+     * 消费组
+     * @var string
+     */
+    protected string $consumeGroup;
 
     /**
      * 每次消费的消息数量(最多可设置为16条)
@@ -41,10 +57,10 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
     protected int $waitSeconds;
 
     /**
-     * message tag 对应的处理类
-     * @var array
+     * 消息处理对象
+     * @var MQConsumerInterface
      */
-    protected array $msgTagHandleClass;
+    protected MQConsumerInterface $mqHandleObj;
 
     /**
      * 消费者对象
@@ -54,24 +70,52 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
 
     /**
      * RocketReliableConsumer constructor.
-     * @param string $msgGroup 消息分组
+     * @param string $topicGroup topic组
      * @param int $msgNum 每次消费的消息数量(最多可设置为16条)
      * @param int $waitSeconds 长轮询时间（最多可设置为30秒）
-     * @param callable $handleFn 处理消息的回调函数
      */
-    public function __construct(string $msgGroup, callable $handleFn, int $msgNum = 3, int $waitSeconds = 3)
+    public function __construct(string $topicGroup, string $consumeGroup, int $msgNum = 3, int $waitSeconds = 3)
     {
         // 更改日志驱动
         Log::setDefaultDriver(config('mq.log_driver'));
+        // 设置基本信息
+        $this->_setMQInfo($topicGroup);
 
-        $this->configGroupName = $msgGroup;
+        // 设置消费组信息
+        $this->setConsumeGroupInfo($consumeGroup);
+
+        $this->topicGroup = $topicGroup;
+        $this->consumeGroup = $consumeGroup;
         $this->msgNum = $msgNum;
         $this->waitSeconds = $waitSeconds;
 
-        // 配置文件选项
-        $this->msgTagHandleClass = config('mq.rocketmq.routes');
-
         $this->setConsumer();
+    }
+
+    /**
+     * 设置消费组信息
+     * @param string $consumeGroup 消费组
+     */
+    protected function setConsumeGroupInfo(string $consumeGroup)
+    {
+        $cgInfo = config('mq.rocketmq.consume_group.' . $consumeGroup);
+        // 验证消费组id（MQ的组件必填项）
+        if (!isset($cgInfo['group_id']) || empty($cgInfo['group_id'])) {
+            throw new MQException('请配置消费组的group_id');
+        }
+
+        // 验证消息处理类
+        if (empty($cgInfo) || empty($handleClass = $cgInfo['handle_class'] ?? null)) {
+            throw new MQException('请定义消息处理类');
+        }
+        $handleObj = new $handleClass;
+        if (!$handleObj instanceof MQConsumerInterface) {
+            throw new MQException('处理类必须实现 MQConsumerInterface 接口');
+        }
+
+        $this->mqHandleObj = $handleObj;
+        $this->groupId = $cgInfo['group_id'];
+        $this->msgTag = $cgInfo['msg_tag'] ?? null;
     }
 
     /**
@@ -80,10 +124,8 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
      */
     private function setConsumer()
     {
-        // 获取配置信息
-        $config = config('mq.rocketmq.group.' . $this->configGroupName);
         // 获取消费者（这里获取全部 msgTag 的消息）
-        $this->consumer = RocketMQClient::getInstance()->getClient()->getConsumer($config['instance_id'], $config['topic'], $config['group_id']);
+        $this->consumer = RocketMQClient::getInstance()->getClient()->getConsumer($this->instanceId, $this->topic, $this->groupId, $this->msgTag);
     }
 
     /**
@@ -119,13 +161,13 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
              */
             // 处理业务逻辑
             foreach ($messages as $message) {
-                $msgTag = $message->getMessageTag();
-                $msgKey = $message->getMessageKey();
-                $msgBody = $message->getMessageBody();
+                $msgTag = $message->getMessageTag(); // 消息标签
+                $msgKey = $message->getMessageKey(); // 消息唯一标识
+                $msgBody = $message->getMessageBody(); // 消息体
 
                 try {
                     // 处理消息
-                    $this->_getMsgTagHandleObjOrFail($msgTag)->callbacks($msgBody, $msgKey);
+                    $this->mqHandleObj->handle($msgBody, $msgKey, $msgTag);
 
                     // 如果处理消息没有抛出异常，则视为处理成功，处理成功删除消息状态记录
                     $msgKey && app(MQStatusLogServiceInterface::class)->deleteByMQUuid($msgKey);
@@ -137,7 +179,7 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
                     Log::info($this->_getLogMsg('[success] 消费信息：', $msgTag, $msgKey, $msgBody));
                 } catch (\Throwable $throwable) {
                     // 处理错误
-                    $this->_handleError($throwable, $msgKey, $msgBody, $this->_getMqLogConfig($msgTag));
+                    $this->_handleError($throwable, $msgKey, $msgBody, $this->_getMqLogConfig());
                     // 消息确认。由于守护进程会定时监听 消息状态表 进行重试，因此不需要再这里重试
                     // 只有 消息key 存在，才确认消息（为了兼容之前的代码）
                     $msgKey && $this->consumer->ackMessage([$message->getReceiptHandle()]);
@@ -163,37 +205,14 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
 
     /**
      * 获取 MQ 日志的配置信息
-     * @param string $msgTag 消息标签
      * @return array
      * @author lwz
      */
-    private function _getMqLogConfig(string $msgTag): array
+    private function _getMqLogConfig(): array
     {
         return [
-            'msg_tag' => $msgTag,
-            'config_group' => $this->configGroupName,
+            'topic_group' => $this->topic,
+            'consume_group' => $this->consumeGroup,
         ];
-    }
-
-    /**
-     * 获取消息标签对应的处理类
-     * @param string $msgTag
-     * @return mixed
-     * @throws MQException
-     * @author lwz
-     */
-    private function _getMsgTagHandleObjOrFail(string $msgTag)
-    {
-        $class = $this->msgTagHandleClass[$msgTag] ?? null;
-        // 判断有没有 消息标签 的处理类
-        if (!$class) {
-            throw new MQException('[' . $msgTag . ']消息标签 对应的处理类不存在', self::MSG_TAG_CLASS_NOT_FOUND_CODE);
-        }
-        // 判断 处理类 有没有实现 callbacks 方法
-        $obj = app($class);
-        if (!method_exists($obj, 'callbacks')) {
-            throw new MQException('[' . get_class($obj) . '] 消息处理类必须实现 callbacks 方法', self::MSG_CALLBACK_ERROR_CODE);
-        }
-        return $obj;
     }
 }

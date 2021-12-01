@@ -40,7 +40,7 @@ class MQReproduceFailMsg extends Command
             // 获取重试失败的数量
             $collection = $mqStatusLogApp->getReproduceData(30);
             if ($collection->isEmpty()) {
-                sleep(5);
+                sleep(10);
                 continue;
             }
             // 重新投递

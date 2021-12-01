@@ -7,6 +7,8 @@
 1. 下载组件包
    ```shell
    composer require lwz/laravel-mq
+   # 安装迁移文件扩展包
+   composer require zedisdog/laravel-schema-extend --dev
    ```
    
 2. 发布配置文件
@@ -53,15 +55,48 @@
 
 > 目前只支持 RocketMQ
 
-#### 1. 生产消息示例
+#### 1. 配置文件设置
+
+> 配置文件名：`mq.php`
+
+```php
+return [
+    'mq_type' => MQConst::TYPE_ROCKETMQ, // 队列类型
+
+    /**
+     * rocketmq 相关配置。队列关键参数：
+     * instance_id => topic => message tag
+     */
+    'rocketmq' => [
+        'http_endpoint' => env('ROCKETMQ_HTTP_ENDPOINT'),
+        'access_key' => env('ROCKETMQ_ACCESS_KEY'),
+        'secret_key' => env('ROCKETMQ_SECRET_KEY'),
+        'topic_group' => [ // topic分组
+//            'scrm' => [ // scrm实例
+//                'instance_id' => '实例id',
+//                'topic' => 'topic名称',
+//            ]
+        ],
+        'consume_group' => [ // 消费者分组
+//            'add_clue' => [ // 消费组名称
+//                'msg_tag' => 'clue', // 消息标签
+//                'group_id' => 'scrm_clue', // 分组id
+//                'handle_class' => '', // 处理的消息的类名。必须继承 Lwz\LaravelExtend\MQ\Interfaces\ConsumerInterface 接口
+//            ],
+        ],
+    ]
+];
+```
+
+#### 2. 生产消息示例
 
 ````php
 // 第一步：创建生产者对象
 $mqObj = app(MQReliableProducerInterface::class,[
-    'msg_tag' => '消息标签',
-    'delay_time' => '延迟时间（可以不传 或 传 null）',
-    'config_group' => '配置文件的分组名',
-    'msg_key' => '消息唯一标识（如果没传会默认生成一个唯一字符串），如：订单号',
+    'topic_group' => 'scrm', // topic分组名
+    'msg_tag' => 'clue', // 消息标签组名
+    //            'delay_time' => '延迟时间（具体的某个时间点，可以不传 或 传 null）',
+    //            'msg_key' => '消息唯一标识（如果没传会默认生成一个唯一字符串），如：订单号',
 ]);
 
 DB::transaction(function () use ($mqObj) {
@@ -76,21 +111,18 @@ DB::transaction(function () use ($mqObj) {
 $mqObj->publishMessage();
 ````
 
-#### 2. 消费消息示例
+#### 3. 消费消息示例
 
 > 注意：msg_tag 必须在 `mq.php` 配置文件中的`routes`指定消费类，否则消费失败
 
 ```shell
-app(MQReliableConsumerAbstract::class, [
-	'config_group' => 'xiansuo'
+app(MQReliableConsumerInterface::class, [
+    'topic_group' => 'scrm', // topic分组名
+    'consume_group' => 'add_clue', // 消费组名
 ])->consumer();
 ```
 
-#### 3. 消息幂等性处理
-
-msg_tag 对应的消费类，需要实现 `callbacks(string $msgBody, string $msgKey)` 方法。
-
-msgBody: 消息体
+#### 4. 消息幂等性处理
 
 msgKey：消息唯一标识（可用于做幂等性处理）
 
