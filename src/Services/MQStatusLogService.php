@@ -37,12 +37,15 @@ class MQStatusLogService implements MQStatusLogServiceInterface
      * 更新消息状态
      * @param string $mqUuid mq唯一标识
      * @param int $status 消息状态
+     * @param string|null $updateTime 更新时间（防止延迟队列，消息没有到达指定时间点，被重复投递）
      * @return mixed
      * @author lwz
      */
-    public function updateStatusByMQUuId(string $mqUuid, int $status)
+    public function updateStatusByMQUuId(string $mqUuid, int $status, ?string $updateTime = null)
     {
-        return MQStatusLogRepository::updateByWhere(['mq_uuid' => $mqUuid], compact('status'));
+        $updateData = compact('status');
+        $updateTime && $updateData['updated_at'] = $updateTime;
+        return MQStatusLogRepository::updateByWhere(['mq_uuid' => $mqUuid], $updateData);
     }
 
     /**

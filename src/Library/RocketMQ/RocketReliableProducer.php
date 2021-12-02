@@ -128,7 +128,11 @@ class RocketReliableProducer implements MQReliableProducerInterface
             // 获取到 消息id 视为投递成功
             if ($this->_checkIsProduceSuccess($publishRet)) {
                 // 更新消息投递状态
-                $this->mqStatusLogSrvApp->updateStatusByMQUuId($this->msgKey, MQStatusLogEnum::STATUS_WAIT_CONSUME);
+                $this->mqStatusLogSrvApp->updateStatusByMQUuId(
+                    $this->msgKey,
+                    MQStatusLogEnum::STATUS_WAIT_CONSUME, 
+                    date('Y-m-d H:i:s', $this->delayTime ?: time())
+                );
             }
             return $publishRet;
         } catch (\Throwable $t) {
