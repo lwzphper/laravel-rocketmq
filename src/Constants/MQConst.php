@@ -10,5 +10,5 @@ namespace Lwz\LaravelExtend\MQ\Constants;
 class MQConst
 {
     public const TYPE_ROCKETMQ = 'RocketMQ';
-    public const TYPE_REDIS = 'Redis';
+//    public const TYPE_REDIS = 'Redis';
 }
