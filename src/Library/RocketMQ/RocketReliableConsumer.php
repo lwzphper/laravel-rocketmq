@@ -115,7 +115,7 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
 
         $this->mqHandleObj = $handleObj;
         $this->groupId = $cgInfo['group_id'];
-        $this->msgTag = $cgInfo['msg_tag'] ?? null;
+        $this->msgTag = $this->setMsgTagExt($cgInfo['msg_tag'] ?? null);
     }
 
     /**

@@ -79,7 +79,7 @@ class RocketReliableProducer implements MQReliableProducerInterface
         $this->_setMQInfo($topicGroup);
 
         $this->topicGroup = $topicGroup;
-        $this->msgTag = $msgTag;
+        $this->msgTag = $this->setMsgTagExt($msgTag);
         $this->msgKey = $msgKey ?: $this->createMsgKey(); // 如果没有设置消息key，自动生成一个唯一标识
         $this->delayTime = $delayTime;
     }

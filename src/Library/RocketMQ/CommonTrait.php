@@ -64,6 +64,22 @@ trait CommonTrait
     }
 
     /**
+     * 设置消息标签后缀
+     * @param string $msgTag 消息标签
+     * @return string
+     */
+    protected function setMsgTagExt(string $msgTag): string
+    {
+        if ($ext = config('mq.rocketmq.msg_tag_ext')) {
+            $msgTagDelimiter = '|'; // 消息标签分隔符，考虑消费监听多个消息标签的情况
+            return implode($msgTagDelimiter, array_map(function ($tag) use ($ext) {
+                return $tag .'_'. $ext;
+            }, explode($msgTagDelimiter, $msgTag)));
+        }
+        return $msgTag;
+    }
+
+    /**
      * 处理错误
      * @param \Throwable $t
      * @param string $msgKey 消息key

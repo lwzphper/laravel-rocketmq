@@ -25,6 +25,8 @@ return [
         'http_endpoint' => env('ROCKETMQ_HTTP_ENDPOINT'),
         'access_key' => env('ROCKETMQ_ACCESS_KEY'),
         'secret_key' => env('ROCKETMQ_SECRET_KEY'),
+        // 消息标签后缀（empty函数值为true则视为不设置），主要为了解决一个队列，开发、测试、正式环境同时使用（虽然这种做法不推荐）
+        'msg_tag_ext' => env('APP_ENV'),
         'topic_group' => [ // topic分组
 //            'scrm' => [ // scrm实例
 //                'instance_id' => '实例id',
