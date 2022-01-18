@@ -9,6 +9,7 @@ namespace Lwz\LaravelExtend\MQ;
 
 use Illuminate\Support\ServiceProvider;
 use Lwz\LaravelExtend\MQ\Commands\MQReproduceFailMsg;
+use Lwz\LaravelExtend\MQ\Constants\MQConst;
 use Lwz\LaravelExtend\MQ\Interfaces\MQErrorLogServiceInterface;
 use Lwz\LaravelExtend\MQ\Interfaces\MQReliableConsumerInterface;
 use Lwz\LaravelExtend\MQ\Interfaces\MQReliableProducerInterface;
@@ -49,6 +50,8 @@ class MQServiceProvider extends ServiceProvider
     {
         // 队列生产者注册
         $this->app->bind(MQReliableProducerInterface::class, function ($app, array $params = []) {
+            // 补上删除发送日志的阶段
+            $params[MQConst::KEY_DELETE_SEND_LOG_STAGE] = config('mq.delete_send_log_stage');
             return MQProducer::getProducer($params);
         });
 

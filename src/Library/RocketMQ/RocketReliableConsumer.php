@@ -8,6 +8,7 @@
 namespace Lwz\LaravelExtend\MQ\Library\RocketMQ;
 
 use Illuminate\Support\Facades\Log;
+use Lwz\LaravelExtend\MQ\Constants\MQConst;
 use Lwz\LaravelExtend\MQ\Exceptions\MQException;
 use Lwz\LaravelExtend\MQ\Interfaces\MQConsumerInterface;
 use Lwz\LaravelExtend\MQ\Interfaces\MQReliableConsumerInterface;
@@ -166,11 +167,16 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
                 $msgBody = $message->getMessageBody(); // 消息体
 
                 try {
+                    // 格式化消息
+                    $msgBody = json_decode($msgBody, true);
+
                     // 处理消息
                     $this->mqHandleObj->handle($msgBody, $msgKey, $msgTag);
 
-                    // 如果处理消息没有抛出异常，则视为处理成功，处理成功删除消息状态记录
-                    $msgKey && app(MQStatusLogServiceInterface::class)->deleteByMQUuid($msgKey);
+                    // 如果处理消息没有抛出异常，则视为处理成功
+                    // 如果配置了消费时删除日志，那么删除发送日志
+                    $delSendLogState = $msgBody[MQConst::KEY_DELETE_SEND_LOG_STAGE] ?? null;
+                    $delSendLogState == MQConst::DEL_SEND_LOG_CONSUMER && app(MQStatusLogServiceInterface::class)->deleteByMQUuid($msgKey);
 
                     // 消息确认
                     $this->consumer->ackMessage([$message->getReceiptHandle()]);

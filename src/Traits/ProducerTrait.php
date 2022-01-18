@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace Lwz\LaravelExtend\MQ\Traits;
 
 use Illuminate\Support\Facades\Log;
+use Lwz\LaravelExtend\MQ\Constants\MQConst;
 use Lwz\LaravelExtend\MQ\Enum\MQStatusLogEnum;
 use Lwz\LaravelExtend\MQ\Interfaces\MQStatusLogServiceInterface;
 
@@ -32,6 +33,8 @@ trait ProducerTrait
      */
     public function publishPrepare(array $payload)
     {
+        // 负载数据加上删除发送日志的时机
+        $payload[MQConst::KEY_DELETE_SEND_LOG_STAGE] = config('mq.delete_send_log_stage');
         // 设置状态日志id
         $statusLogRet = $this->mqStatusLogSrvApp->addData($this->msgKey, MQStatusLogEnum::STATUS_WAIT_SEND, $payload, $this->getMqLogConfig());
         $this->mqStatusId = $statusLogRet->id;

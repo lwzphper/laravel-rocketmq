@@ -11,6 +11,11 @@ return [
     'reproduce_time' => 600, // 重新投递的时间（投递多久后没有被消费，重新投递）
     'log_driver' => 'queuelog', // 日志驱动
 
+    'delete_send_log_stage' => MQConst::DEL_SEND_LOG_MSG_ID,  // 删除发送日志的阶段
+
+    'save_produce_log' => true, // 是否记录发送日志
+    'save_consumer_log' => true, // 是否记录消费日志
+
     /**
      * rocketmq 相关配置。队列关键参数：
      * instance_id => topic => message tag
