@@ -166,9 +166,9 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
                 $msgKey = $message->getMessageKey(); // 消息唯一标识
                 $msgBody = $message->getMessageBody(); // 消息体
 
+                // 格式化消息
+                $msgBody = json_decode($msgBody, true);
                 try {
-                    // 格式化消息
-                    $msgBody = json_decode($msgBody, true);
 
                     // 处理消息
                     $this->mqHandleObj->handle($msgBody, $msgKey, $msgTag);
@@ -182,15 +182,14 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
                     $this->consumer->ackMessage([$message->getReceiptHandle()]);
 
                     // 记录日志
-                    Log::info($this->_getLogMsg('[success] 消费信息：', $msgTag, $msgKey, $msgBody));
+                    config('mq.save_consumer_success_log') && Log::info($this->_getLogMsg('[consumer success] 消费信息：', $msgTag, $msgKey, $msgBody));
                 } catch (\Throwable $throwable) {
                     // 处理错误
                     $this->_handleError($throwable, $msgKey, $msgBody, $this->_getMqLogConfig());
-                    // 消息确认。由于守护进程会定时监听 消息状态表 进行重试，因此不需要再这里重试
-                    // 只有 消息key 存在，才确认消息（为了兼容之前的代码）
-                    $msgKey && $this->consumer->ackMessage([$message->getReceiptHandle()]);
+                    // 消息确认 todo 查看有没有 nack机制，记录消息失败次数
+//                    $this->consumer->ackMessage([$message->getReceiptHandle()]);
                     // 记录日志
-                    Log::info($this->_getLogMsg('[error] 消费信息：', $msgTag, $msgKey, $msgBody));
+                    config('mq.save_consumer_error_log') && Log::info($this->_getLogMsg('[consumer error] 消费信息：', $msgTag, $msgKey, $msgBody));
                 }
             }
         }
@@ -201,12 +200,12 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
      * @param string $mainContent 主消息
      * @param string $msgTag 消息标签
      * @param string $msgKey 消息健
-     * @param string $msgBody 消息体
+     * @param array $msgBody 消息体
      * @author lwz
      */
-    private function _getLogMsg(string $mainContent, string $msgTag, string $msgKey, string $msgBody): string
+    private function _getLogMsg(string $mainContent, string $msgTag, string $msgKey, array $msgBody): string
     {
-        return sprintf($mainContent . ' [msg_tag] %s; [msg_key] %s; [msg_body] %s', $msgTag, $msgKey, $msgBody);
+        return sprintf($mainContent . ' [msg_tag] %s; [msg_key] %s; [msg_body] %s', $msgTag, $msgKey, json_encode($msgBody));
     }
 
     /**

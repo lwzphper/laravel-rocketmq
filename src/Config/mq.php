@@ -14,7 +14,8 @@ return [
     'delete_send_log_stage' => MQConst::DEL_SEND_LOG_MSG_ID,  // 删除发送日志的阶段
 
     'save_produce_log' => true, // 是否记录发送日志
-    'save_consumer_log' => true, // 是否记录消费日志
+    'save_consumer_success_log' => true, // 是否记录消费日志
+    'save_consumer_error_log' => true, // 是否记录消费失败日志
 
     /**
      * rocketmq 相关配置。队列关键参数：
