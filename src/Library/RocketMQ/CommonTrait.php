@@ -80,6 +80,21 @@ trait CommonTrait
     }
 
     /**
+     * 设置分组id后缀
+     * @param string $groupId 分组id
+     * @return string
+     * @author lwz
+     */
+    protected function setGroupIdExt(string $groupId): string
+    {
+        // 如果标签设置后缀，分组id也要设置响应后缀，否则同一个分组id消费不同消息标签，会有数据问题
+        if ($ext = config('mq.rocketmq.msg_tag_ext')) {
+            return $groupId . '_' . $ext;
+        }
+        return $groupId;
+    }
+
+    /**
      * 处理错误
      * @param \Throwable $t
      * @param string $msgKey 消息key
