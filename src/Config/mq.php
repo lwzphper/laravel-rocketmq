@@ -9,7 +9,7 @@ return [
     'mq_type' => MQConst::TYPE_ROCKETMQ, // 队列类型（目前只支持 RocketMQ、Redis）。 RocketMQ、RabbitMQ、Kafka、Redis
     'reproduce_max_num' => 5, // 最大重新投递次数
     'reproduce_time' => 600, // 重新投递的时间（投递多久后没有被消费，重新投递）
-    'log_driver' => 'queuelog', // 日志驱动
+    'log_driver' => 'queuelog', // 日志驱动（主要针对消费者）
 
     'delete_send_log_stage' => MQConst::DEL_SEND_LOG_MSG_ID,  // 删除发送日志的阶段
 

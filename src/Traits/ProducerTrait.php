@@ -56,8 +56,8 @@ trait ProducerTrait
      */
     protected function init()
     {
-        // 设置日志驱动
-        Log::setDefaultDriver(config('mq.log_driver'));
+        // 设置日志驱动 （生产者不需要设置日志驱动）
+//        Log::setDefaultDriver(config('mq.log_driver'));
 
         // 设置 mq 消息状态服务应用类
         $this->mqStatusLogSrvApp = app(MQStatusLogServiceInterface::class);
