@@ -78,7 +78,7 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
     public function __construct(string $topicGroup, string $consumeGroup, int $msgNum = 3, int $waitSeconds = 3)
     {
         // 更改日志驱动
-        Log::setDefaultDriver(config('mq.log_driver'));
+//        Log::setDefaultDriver(config('mq.log_driver'));
         // 设置基本信息
         $this->_setMQInfo($topicGroup);
 
@@ -182,14 +182,14 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
                     $this->consumer->ackMessage([$message->getReceiptHandle()]);
 
                     // 记录日志
-                    config('mq.save_consumer_success_log') && Log::info($this->_getLogMsg('[consumer success] 消费信息：', $msgTag, $msgKey, $msgBody));
+                    config('mq.save_consumer_success_log') && $this->getLogDriver()->info($this->_getLogMsg('[consumer success] 消费信息：', $msgTag, $msgKey, $msgBody));
                 } catch (\Throwable $throwable) {
                     // 处理错误
                     $this->_handleError($throwable, $msgKey, $msgBody, $this->_getMqLogConfig());
                     // 消息确认 todo 查看有没有 nack机制，记录消息失败次数
 //                    $this->consumer->ackMessage([$message->getReceiptHandle()]);
                     // 记录日志
-                    config('mq.save_consumer_error_log') && Log::info($this->_getLogMsg('[consumer error] 消费信息：', $msgTag, $msgKey, $msgBody));
+                    config('mq.save_consumer_error_log') && $this->getLogDriver()->info($this->_getLogMsg('[consumer error] 消费信息：', $msgTag, $msgKey, $msgBody));
                 }
             }
         }

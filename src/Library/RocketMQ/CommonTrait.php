@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Log;
 use Lwz\LaravelExtend\MQ\Exceptions\MQException;
 use Lwz\LaravelExtend\MQ\Interfaces\MQErrorLogServiceInterface;
 use MQ\Model\TopicMessage;
+use Psr\Log\LoggerInterface;
 
 trait CommonTrait
 {
@@ -109,6 +110,17 @@ trait CommonTrait
         app(MQErrorLogServiceInterface::class)->addData($msgKey, $payload, $mqConfig, $errMsg);
 
         // 记录日志文件
-        Log::error($errMsg);
+        $this->getLogDriver()->error($errMsg);
+    }
+
+
+    /**
+     * 获取日志驱动
+     * @return LoggerInterface
+     */
+    protected function getLogDriver(): LoggerInterface
+    {
+        // 使用 Log::setDefaultDriver() 方法设置驱动，会同时修改业务代码的日志驱动，因此这里单独设置 channel
+        return Log::channel(config('mq.log_driver'));
     }
 }
