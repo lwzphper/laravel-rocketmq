@@ -33,13 +33,15 @@ trait ProducerTrait
      */
     public function publishPrepare(array $payload)
     {
+        $result = [];
+        $result[MQConst::KEY_USER_DATA] = $payload;
         // 负载数据加上删除发送日志的时机
-        $payload[MQConst::KEY_DELETE_SEND_LOG_STAGE] = config('mq.delete_send_log_stage');
+        $result[MQConst::KEY_DELETE_SEND_LOG_STAGE] = config('mq.delete_send_log_stage');
         // 设置状态日志id
-        $statusLogRet = $this->mqStatusLogSrvApp->addData($this->msgKey, MQStatusLogEnum::STATUS_WAIT_SEND, $payload, $this->getMqLogConfig());
+        $statusLogRet = $this->mqStatusLogSrvApp->addData($this->msgKey, MQStatusLogEnum::STATUS_WAIT_SEND, $result, $this->getMqLogConfig());
         $this->mqStatusId = $statusLogRet->id;
         // 设置消息体
-        $this->payload = $payload;
+        $this->payload = $result;
     }
 
     /**

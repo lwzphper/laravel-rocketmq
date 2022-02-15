@@ -52,8 +52,8 @@ class MQServiceProvider extends ServiceProvider
     {
         // 队列生产者注册
         $this->app->bind(MQReliableProducerInterface::class, function ($app, array $params = []) {
-            // 补上删除发送日志的阶段
-            $params[MQConst::KEY_DELETE_SEND_LOG_STAGE] = config('mq.delete_send_log_stage');
+            // 补上删除发送日志的阶段（在 payload 中设置）
+//            $params[MQConst::KEY_DELETE_SEND_LOG_STAGE] = config('mq.delete_send_log_stage');
             return MQProducer::getProducer($params);
         });
 

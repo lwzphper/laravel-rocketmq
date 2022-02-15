@@ -33,4 +33,9 @@ class MQConst
      * 字段定义
      */
     public const KEY_DELETE_SEND_LOG_STAGE = 'dsl_stage'; // 删除发送日志的阶段
+
+    /**
+     * 用户数据的key
+     */
+    public const KEY_USER_DATA = 'data';
 }

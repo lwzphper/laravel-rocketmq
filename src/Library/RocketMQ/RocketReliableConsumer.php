@@ -171,7 +171,7 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
                 try {
 
                     // 处理消息
-                    $this->mqHandleObj->handle($msgBody, $msgKey, $msgTag);
+                    $this->mqHandleObj->handle($msgBody[MQConst::KEY_USER_DATA], $msgKey, $msgTag);
 
                     // 如果处理消息没有抛出异常，则视为处理成功
                     // 如果配置了消费时删除日志，那么删除发送日志
