@@ -74,7 +74,7 @@ trait CommonTrait
         if ($ext = config('mq.rocketmq.msg_tag_ext')) {
             $msgTagDelimiter = '|'; // 消息标签分隔符，考虑消费监听多个消息标签的情况
             return implode($msgTagDelimiter, array_map(function ($tag) use ($ext) {
-                return $tag .'_'. $ext;
+                return $tag . '_' . $ext;
             }, explode($msgTagDelimiter, $msgTag)));
         }
         return $msgTag;
@@ -122,5 +122,27 @@ trait CommonTrait
     {
         // 使用 Log::setDefaultDriver() 方法设置驱动，会同时修改业务代码的日志驱动，因此这里单独设置 channel
         return Log::channel(config('mq.log_driver'));
+    }
+
+    /**
+     * 加密数据
+     * @param array $data 数据
+     * @return string
+     * @author lwz
+     */
+    protected function encodeData(array $data): string
+    {
+        return (string)json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    /**
+     * 解密数据
+     * @param string $data
+     * @return mixed
+     * @author lwz
+     */
+    protected function decodeData(string $data): array
+    {
+        return json_decode($data, true);
     }
 }

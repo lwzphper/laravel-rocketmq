@@ -167,11 +167,12 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
                 $msgBody = $message->getMessageBody(); // 消息体
 
                 // 格式化消息
-                $msgBody = json_decode($msgBody, true);
+                $msgBody = $this->decodeData($msgBody);
                 try {
 
                     // 处理消息
-                    $this->mqHandleObj->handle($msgBody[MQConst::KEY_USER_DATA], $msgKey, $msgTag);
+                    // 参数一：获取不到 data 设置为 msgBody，主要为了兼容 之前版本
+                    $this->mqHandleObj->handle($msgBody[MQConst::KEY_USER_DATA] ?? $msgBody, $msgKey, $msgTag);
 
                     // 如果处理消息没有抛出异常，则视为处理成功
                     // 如果配置了消费时删除日志，那么删除发送日志
@@ -205,7 +206,7 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
      */
     private function _getLogMsg(string $mainContent, string $msgTag, string $msgKey, array $msgBody): string
     {
-        return sprintf($mainContent . ' [msg_tag] %s; [msg_key] %s; [msg_body] %s', $msgTag, $msgKey, json_encode($msgBody));
+        return sprintf($mainContent . ' [msg_tag] %s; [msg_key] %s; [msg_body] %s', $msgTag, $msgKey, $this->encodeData($msgBody));
     }
 
     /**

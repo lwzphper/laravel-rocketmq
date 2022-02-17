@@ -159,7 +159,7 @@ class RocketReliableProducer implements MQReliableProducerInterface
         $producer = RocketMQClient::getInstance()->getClient()->getProducer($this->instanceId, $this->topic);
 
         // 发布消息
-        $payload = json_encode($this->payload);
+        $payload = $this->encodeData($this->payload);
         $publishMessage = new TopicMessage($payload); //消息内容
         $publishMessage->setMessageTag($this->msgTag);//设置TAG
         // 设置消息KEY
