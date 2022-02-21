@@ -23,7 +23,7 @@ class MQHelper
         }
 
         if ($ext = config('mq.rocketmq.msg_tag_ext')) {
-            $msgTagDelimiter = '|'; // 消息标签分隔符，考虑消费监听多个消息标签的情况
+            $msgTagDelimiter = '||'; // 消息标签分隔符，考虑消费监听多个消息标签的情况
             return implode($msgTagDelimiter, array_map(function ($tag) use ($ext) {
                 return $tag . '_' . $ext;
             }, explode($msgTagDelimiter, $msgTag)));
