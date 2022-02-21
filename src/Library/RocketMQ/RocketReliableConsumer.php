@@ -13,6 +13,7 @@ use Lwz\LaravelExtend\MQ\Exceptions\MQException;
 use Lwz\LaravelExtend\MQ\Interfaces\MQConsumerInterface;
 use Lwz\LaravelExtend\MQ\Interfaces\MQReliableConsumerInterface;
 use Lwz\LaravelExtend\MQ\Interfaces\MQStatusLogServiceInterface;
+use Lwz\LaravelExtend\MQ\Library\MQHelper;
 use MQ\Exception\MessageNotExistException;
 use MQ\Model\Message;
 use MQ\MQConsumer;
@@ -116,7 +117,7 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
 
         $this->mqHandleObj = $handleObj;
         $this->groupId = $this->setGroupIdExt($cgInfo['group_id']);
-        $this->msgTag = $this->setMsgTagExt($cgInfo['msg_tag'] ?? null);
+        $this->msgTag = MQHelper::setRocketMQMsgTagExt($cgInfo['msg_tag'] ?? null);
     }
 
     /**

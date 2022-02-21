@@ -13,6 +13,7 @@ use Lwz\LaravelExtend\MQ\Enum\MQStatusLogEnum;
 use Lwz\LaravelExtend\MQ\Exceptions\MQException;
 use Lwz\LaravelExtend\MQ\Interfaces\MQReliableProducerInterface;
 use Lwz\LaravelExtend\MQ\Interfaces\MQStatusLogServiceInterface;
+use Lwz\LaravelExtend\MQ\Library\MQHelper;
 use Lwz\LaravelExtend\MQ\Traits\ProducerTrait;
 use MQ\Model\TopicMessage;
 
@@ -79,7 +80,7 @@ class RocketReliableProducer implements MQReliableProducerInterface
         $this->_setMQInfo($topicGroup);
 
         $this->topicGroup = $topicGroup;
-        $this->msgTag = $this->setMsgTagExt($msgTag);
+        $this->msgTag = MQHelper::setRocketMQMsgTagExt($msgTag);
         $this->msgKey = $msgKey ?: $this->createMsgKey(); // 如果没有设置消息key，自动生成一个唯一标识
         $this->delayTime = $delayTime;
     }
