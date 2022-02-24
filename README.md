@@ -95,7 +95,7 @@ return [
 $mqObj = app(MQReliableProducerInterface::class,[
     'topic_group' => 'scrm', // topic组名
     'msg_tag' => 'clue', // 消息标签组名
-    //            'delay_time' => '延迟时间（具体的某个时间点，可以不传 或 传 null）',
+    //            'delay_time' => '延迟时间戳（具体时间的时间戳，如：strotime(2022-10-10 10:32:43)，可以不传 或 传 null）',
     //            'msg_key' => '消息唯一标识（如果没传会默认生成一个唯一字符串），如：订单号',
 ]);
 
