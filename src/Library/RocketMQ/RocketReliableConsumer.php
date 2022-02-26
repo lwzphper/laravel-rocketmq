@@ -145,10 +145,14 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
                 $messages = $this->consumer->consumeMessage($this->msgNum, $this->waitSeconds);
             } catch (\Exception $e) {
                 if ($e instanceof MessageNotExistException) {
-                    // 没有消息可以消费，接着轮询
+                    // Topic中没有消息可消费，继续轮询。
                     continue;
                 }
-                sleep(1);
+
+                // 记录错误日志
+                config('mq.save_consumer_error_log') &&
+                $this->getLogDriver()->info('获取消息 error:' . $e->getMessage());
+                sleep(3);
                 continue;
             } catch (\Error $err) {
                 // mq 获取响应异常
