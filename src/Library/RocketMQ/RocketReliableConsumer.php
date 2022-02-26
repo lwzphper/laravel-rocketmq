@@ -71,6 +71,12 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
     protected MQConsumer $consumer;
 
     /**
+     * 是否保存消息失败日志
+     * @var bool
+     */
+    protected bool $saveErrorLog;
+
+    /**
      * RocketReliableConsumer constructor.
      * @param string $topicGroup topic组
      * @param int $msgNum 每次消费的消息数量(最多可设置为16条)
@@ -86,10 +92,13 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
         // 设置消费组信息
         $this->setConsumeGroupInfo($consumeGroup);
 
+        // 消费相关配置
         $this->topicGroup = $topicGroup;
         $this->consumeGroup = $consumeGroup;
         $this->msgNum = $msgNum;
         $this->waitSeconds = $waitSeconds;
+
+        $this->saveErrorLog = config('mq.save_consumer_error_log');
 
         $this->setConsumer();
     }
@@ -150,23 +159,27 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
                 }
 
                 // 记录错误日志
-                config('mq.save_consumer_error_log') &&
+                $this->saveErrorLog &&
                 $this->getLogDriver()->info('获取消息 error:' . $e->getMessage());
                 sleep(3);
                 continue;
-            } catch (\Error $err) {
+            } /*catch (\Error $err) {
                 // mq 获取响应异常
                 if ($err->getMessage() == 'Call to undefined method GuzzleHttp\Exception\ConnectException::hasResponse()') {
                     continue;
                 }
                 throw new $err;
-            }
+            }*/
 
             /**
              * @var $message Message
              */
             // 处理业务逻辑
+            $receiptHandles = array();
             foreach ($messages as $message) {
+                // 消息句柄有时间戳，同一条消息每次消费拿到的都不一样
+                $receiptHandles[] = $message->getReceiptHandle();
+
                 $msgTag = $message->getMessageTag(); // 消息标签
                 $msgKey = $message->getMessageKey(); // 消息唯一标识
                 $msgBody = $message->getMessageBody(); // 消息体
@@ -185,19 +198,32 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
                     $delSendLogState == MQConst::DEL_SEND_LOG_CONSUMER && app(MQStatusLogServiceInterface::class)->deleteByMQUuid($msgKey);
 
                     // 消息确认
-                    $this->consumer->ackMessage([$message->getReceiptHandle()]);
+//                    $this->consumer->ackMessage([$message->getReceiptHandle()]);
 
                     // 记录日志
-                    config('mq.save_consumer_success_log') && $this->getLogDriver()->info($this->_getLogMsg('[consumer success] 消费信息：', $msgTag, $msgKey, $msgBody));
+                    config('mq.save_consumer_success_log')
+                    && $this->getLogDriver()->info(
+                        $this->_getLogMsg('[consumer success] 消费信息：', $msgTag, $msgKey, $msgBody)
+                    );
                 } catch (\Throwable $throwable) {
+                    /*if ($e instanceof MQ\Exception\AckMessageException) {
+                        // 某些消息的句柄可能超时了会导致确认不成功
+//                        printf("Ack Error, RequestId:%s\n", $e->getRequestId());
+                    }*/
                     // 处理错误
                     $this->_handleError($throwable, $msgKey, $msgBody, $this->_getMqLogConfig());
                     // 消息确认 todo 查看有没有 nack机制，记录消息失败次数
 //                    $this->consumer->ackMessage([$message->getReceiptHandle()]);
                     // 记录日志
-                    config('mq.save_consumer_error_log') && $this->getLogDriver()->info($this->_getLogMsg('[consumer error] 消费信息：', $msgTag, $msgKey, $msgBody));
+                    $this->saveErrorLog
+                    && $this->getLogDriver()->info(
+                        $this->_getLogMsg('[consumer error] 消费信息：', $msgTag, $msgKey, $msgBody)
+                    );
                 }
             }
+
+            // 消息确认
+            $this->consumer->ackMessage($receiptHandles);
         }
     }
 
