@@ -175,7 +175,10 @@ class RocketReliableProducer implements MQReliableProducerInterface
         // 处理消息发送成功的相关操作
         if ($this->_checkIsProduceSuccess($publishRet)) {
             // 记录发送日志
-            config('mq.save_produce_log') && $this->getLogDriver()->info(sprintf('消息生产成功。[msg_tag] %s; [msg_key] %s; [msg_body] %s', $this->msgTag, $this->msgKey, $payload));
+            config('mq.save_produce_log') && $this->getLogDriver()->info(
+                sprintf('消息生产成功。[msg_id] %s; [msg_tag] %s; [msg_key] %s; [msg_body] %s',
+                    $publishRet->getMessageId(), $this->msgTag, $this->msgKey, $payload)
+            );
         }
 
         return $publishRet;
