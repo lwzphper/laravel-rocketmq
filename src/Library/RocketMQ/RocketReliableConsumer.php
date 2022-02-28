@@ -17,6 +17,7 @@ use Lwz\LaravelExtend\MQ\Library\MQHelper;
 use MQ\Exception\MessageNotExistException;
 use MQ\Model\Message;
 use MQ\MQConsumer;
+use MQ\Exception\AckMessageException;
 
 class RocketReliableConsumer implements MQReliableConsumerInterface
 {
@@ -183,6 +184,7 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
                 $msgTag = $message->getMessageTag(); // 消息标签
                 $msgKey = $message->getMessageKey(); // 消息唯一标识
                 $msgBody = $message->getMessageBody(); // 消息体
+                $msgId = $messages->getMessageId();
 
                 // 格式化消息
                 $msgBody = $this->decodeData($msgBody);
@@ -203,7 +205,7 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
                     // 记录日志
                     config('mq.save_consumer_success_log')
                     && $this->getLogDriver()->info(
-                        $this->_getLogMsg('[consumer success] 消费信息：', $msgTag, $msgKey, $msgBody)
+                        $this->_getLogMsg('[consumer success] 消费信息：', $msgId, $msgTag, $msgKey, $msgBody)
                     );
                 } catch (\Throwable $throwable) {
                     /*if ($e instanceof MQ\Exception\AckMessageException) {
@@ -216,28 +218,42 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
 //                    $this->consumer->ackMessage([$message->getReceiptHandle()]);
                     // 记录日志
                     $this->saveErrorLog
-                    && $this->getLogDriver()->info(
-                        $this->_getLogMsg('[consumer error] 消费信息：', $msgTag, $msgKey, $msgBody)
+                    && $this->getLogDriver()->error(
+                        $this->_getLogMsg('[consumer error] 消费信息：', $msgId, $msgTag, $msgKey, $msgBody)
                     );
                 }
             }
 
-            // 消息确认
-            $this->consumer->ackMessage($receiptHandles);
+            try {
+                // 消息确认
+                $this->consumer->ackMessage($receiptHandles);
+            } catch (\Exception $e) {
+                if ($e instanceof AckMessageException) {
+                    // 某些消息的句柄可能超时，会导致消息消费状态确认不成功。
+                    $this->saveErrorLog
+                    && $this->getLogDriver()->error("Ack Error, RequestId:%s\n", $e->getRequestId());
+                    foreach ($e->getAckMessageErrorItems() as $errorItem) {
+                        $this->saveErrorLog
+                        && $this->getLogDriver()->error(sprintf("\tReceiptHandle:%s, ErrorCode:%s, ErrorMsg:%s\n", $errorItem->getReceiptHandle(), $errorItem->getErrorCode(), $errorItem->getErrorCode()));
+                    }
+                }
+            }
         }
     }
 
     /**
      * 获取日志消息
      * @param string $mainContent 主消息
+     * @param string $msgId 消息id
      * @param string $msgTag 消息标签
      * @param string $msgKey 消息健
      * @param array $msgBody 消息体
+     * @return string
      * @author lwz
      */
-    private function _getLogMsg(string $mainContent, string $msgTag, string $msgKey, array $msgBody): string
+    private function _getLogMsg(string $mainContent, string $msgId, string $msgTag, string $msgKey, array $msgBody): string
     {
-        return sprintf($mainContent . ' [msg_tag] %s; [msg_key] %s; [msg_body] %s', $msgTag, $msgKey, $this->encodeData($msgBody));
+        return sprintf($mainContent . '[msg_id] %s [msg_tag] %s; [msg_key] %s; [msg_body] %s', $msgId, $msgTag, $msgKey, $this->encodeData($msgBody));
     }
 
     /**
