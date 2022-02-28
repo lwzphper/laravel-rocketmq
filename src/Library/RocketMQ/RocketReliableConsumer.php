@@ -184,7 +184,7 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
                 $msgTag = $message->getMessageTag(); // 消息标签
                 $msgKey = $message->getMessageKey(); // 消息唯一标识
                 $msgBody = $message->getMessageBody(); // 消息体
-                $msgId = $messages->getMessageId();
+                $msgId = $message->getMessageId();
 
                 // 格式化消息
                 $msgBody = $this->decodeData($msgBody);
