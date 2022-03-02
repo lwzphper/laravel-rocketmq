@@ -95,7 +95,10 @@ class RocketReliableProducer implements MQReliableProducerInterface
     public function simplePublish(array $payload): TopicMessage
     {
         $this->payload = $payload;
-        return $this->_sendMsg();
+        $publishRet = $this->_sendMsg();
+        // 获取到 消息id 视为投递成功
+        $this->handleSendMsgAfter($publishRet);
+        return $publishRet;
     }
 
     /**
@@ -127,24 +130,36 @@ class RocketReliableProducer implements MQReliableProducerInterface
             // 发送消息
             $publishRet = $this->_sendMsg();
             // 获取到 消息id 视为投递成功
-            if ($this->_checkIsProduceSuccess($publishRet)) {
-                // 根据删除发送日志阶段，做相应处理
-                $logState = $this->payload[MQConst::KEY_DELETE_SEND_LOG_STAGE] ?? null;
-                if ($logState == MQConst::DEL_SEND_LOG_MSG_ID) { // 接收到 消息id 删除日志
-                    app(MQStatusLogServiceInterface::class)->deleteByMQUuid($this->msgKey);
-                } else { // 消费时删除日志，更新消息发送状态
-                    // 更新消息投递状态
-                    $this->mqStatusLogSrvApp->updateStatusByMQUuId(
-                        $this->msgKey,
-                        MQStatusLogEnum::STATUS_WAIT_CONSUME,
-                        date('Y-m-d H:i:s', $this->delayTime ?: time())
-                    );
-                }
-            }
+            $this->handleSendMsgAfter($publishRet);
             return $publishRet;
         } catch (\Throwable $t) {
             self::_handleError($t, $this->msgKey, $this->payload, $this->getMqLogConfig());
             throw new MQException('消息生成失败');
+        }
+    }
+
+
+    /**
+     * 处理发送消息后的操作
+     * @param TopicMessage $publishRet
+     * @author lwz
+     */
+    protected function handleSendMsgAfter(TopicMessage $publishRet)
+    {
+        // 获取到 消息id 视为投递成功
+        if ($this->_checkIsProduceSuccess($publishRet)) {
+            // 根据删除发送日志阶段，做相应处理
+            $logState = $this->payload[MQConst::KEY_DELETE_SEND_LOG_STAGE] ?? null;
+            if ($logState == MQConst::DEL_SEND_LOG_MSG_ID) { // 接收到 消息id 删除日志
+                app(MQStatusLogServiceInterface::class)->deleteByMQUuid($this->msgKey);
+            } else { // 消费时删除日志，更新消息发送状态
+                // 更新消息投递状态
+                $this->mqStatusLogSrvApp->updateStatusByMQUuId(
+                    $this->msgKey,
+                    MQStatusLogEnum::STATUS_WAIT_CONSUME,
+                    date('Y-m-d H:i:s', $this->delayTime ?: time())
+                );
+            }
         }
     }
 
@@ -160,7 +175,7 @@ class RocketReliableProducer implements MQReliableProducerInterface
         $producer = RocketMQClient::getInstance()->getClient()->getProducer($this->instanceId, $this->topic);
 
         // 发布消息
-        $payload = $this->encodeData($this->payload);
+        $payload = MQHelper::encodeData($this->payload);
         $publishMessage = new TopicMessage($payload); //消息内容
         $publishMessage->setMessageTag($this->msgTag);//设置TAG
         // 设置消息KEY

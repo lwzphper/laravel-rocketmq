@@ -253,7 +253,10 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
      */
     private function _getLogMsg(string $mainContent, string $msgId, string $msgTag, string $msgKey, array $msgBody): string
     {
-        return sprintf($mainContent . '[msg_id] %s [msg_tag] %s; [msg_key] %s; [msg_body] %s', $msgId, $msgTag, $msgKey, $this->encodeData($msgBody));
+        return sprintf(
+            $mainContent . '[msg_id] %s [msg_tag] %s; [msg_key] %s; [msg_body] %s',
+            $msgId, $msgTag, $msgKey, MQHelper::encodeData($msgBody)
+        );
     }
 
     /**

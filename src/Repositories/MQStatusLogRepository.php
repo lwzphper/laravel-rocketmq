@@ -47,4 +47,15 @@ class MQStatusLogRepository extends RepositoryAbstract
             ->limit($num)
             ->get();
     }
+
+    /**
+     * 通过id批量删除
+     * @param array $ids
+     * @return mixed
+     * @author lwz
+     */
+    public static function deleteByIds(array $ids)
+    {
+        return MQStatusLog::whereIn('id', $ids)->delete();
+    }
 }

@@ -11,6 +11,7 @@ namespace Lwz\LaravelExtend\MQ\Services;
 use Lwz\LaravelExtend\MQ\Interfaces\MQErrorLogServiceInterface;
 use Lwz\LaravelExtend\MQ\Models\MQErrorLog;
 use Lwz\LaravelExtend\MQ\Repositories\MQErrorLogRepository;
+use Lwz\LaravelExtend\MQ\Library\MQHelper;
 
 class MQErrorLogService implements MQErrorLogServiceInterface
 {
@@ -26,8 +27,8 @@ class MQErrorLogService implements MQErrorLogServiceInterface
     {
         return MQErrorLogRepository::add([
             'mq_uuid' => $mqUuid,
-            'mq_config' => json_encode($mqConfig),
-            'payload' => is_string($payload) ? $payload : json_encode($payload),
+            'mq_config' => MQHelper::encodeData($mqConfig),
+            'payload' => is_string($payload) ? $payload : MQHelper::encodeData($payload),
             'error_msg' => $errMsg,
         ]);
     }

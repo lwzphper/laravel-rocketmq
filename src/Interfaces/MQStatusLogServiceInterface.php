@@ -56,4 +56,12 @@ interface MQStatusLogServiceInterface
      * @author lwz
      */
     public function getReproduceData(int $num): Collection;
+
+    /**
+     * 通过id批量删除
+     * @param array $ids id数组
+     * @return mixed
+     * @author lwz
+     */
+    public function deleteByIds(array $ids);
 }

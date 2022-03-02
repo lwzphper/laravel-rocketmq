@@ -30,4 +30,26 @@ class MQHelper
         }
         return $msgTag;
     }
+
+    /**
+     * 加密数据
+     * @param array $data 数据
+     * @return string
+     * @author lwz
+     */
+    public static function encodeData(array $data): string
+    {
+        return (string)json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    /**
+     * 解密数据
+     * @param string $data
+     * @return mixed
+     * @author lwz
+     */
+    public static function decodeData(string $data): array
+    {
+        return json_decode($data, true);
+    }
 }

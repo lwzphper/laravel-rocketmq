@@ -12,6 +12,7 @@ use Illuminate\Support\Collection;
 use Lwz\LaravelExtend\MQ\Interfaces\MQStatusLogServiceInterface;
 use Lwz\LaravelExtend\MQ\Models\MQStatusLog;
 use Lwz\LaravelExtend\MQ\Repositories\MQStatusLogRepository;
+use Lwz\LaravelExtend\MQ\Library\MQHelper;
 
 class MQStatusLogService implements MQStatusLogServiceInterface
 {
@@ -28,8 +29,8 @@ class MQStatusLogService implements MQStatusLogServiceInterface
         return MQStatusLogRepository::add([
             'status' => $status,
             'mq_uuid' => $mqUuid,
-            'mq_config' => json_encode($mqConfig, true),
-            'payload' => json_encode($payload, true),
+            'mq_config' => MQHelper::encodeData($mqConfig),
+            'payload' => MQHelper::encodeData($payload),
         ]);
     }
 
@@ -79,5 +80,16 @@ class MQStatusLogService implements MQStatusLogServiceInterface
     public function updateReproduceData(array $ids)
     {
         return MQStatusLogRepository::updateReproduceData($ids);
+    }
+
+    /**
+     * 通过id批量删除
+     * @param array $ids id数组
+     * @return mixed
+     * @author lwz
+     */
+    public function deleteByIds(array $ids)
+    {
+        return MQStatusLogRepository::deleteByIds($ids);
     }
 }
