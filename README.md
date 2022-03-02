@@ -126,7 +126,7 @@ app(MQReliableConsumerInterface::class, [
 
 msgKey：消息唯一标识（可用于做幂等性处理）
 
-### 守护进程，监听失败消息重新投递
+#### 5. 守护进程，监听失败消息重新投递
 
 > 由于所有消息都记录在同一张表里，因此只需要启动一个 进程 即可，否则会产生多次投递的问题
 
@@ -134,3 +134,7 @@ msgKey：消息唯一标识（可用于做幂等性处理）
 php artisan mq:reproduce
 ```
 
+#### 6. 消费进程
+```shell
+php artisan mq:consumer topic组名称 消费者名称
+```
