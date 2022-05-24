@@ -69,9 +69,10 @@ class RocketReliableProducer implements MQReliableProducerInterface
      * @param string $topicGroup topic所属分组
      * @param string|null $msgTag 消息标签
      * @param string|null $msgKey 消息的 key 。用于唯一标识消息，可以做幂等性处理（如：订单号）
-     * @param int|null $delayTime 延迟时间戳（具体时间的时间戳，如：strotime(2022-10-10 10:32:43)）
+     * @param int|null $delayTime 延迟时间戳（具体时间的时间戳，如：strtotime(2022-10-10 10:32:43)）
+     * @param bool $addMsgTagExt 是否添加标签后缀
      */
-    public function __construct(string $topicGroup, ?string $msgTag = null, ?string $msgKey = null, ?int $delayTime = null)
+    public function __construct(string $topicGroup, ?string $msgTag = null, ?string $msgKey = null, ?int $delayTime = null, bool $addMsgTagExt = true)
     {
         // 初始操作
         $this->init();
@@ -80,7 +81,7 @@ class RocketReliableProducer implements MQReliableProducerInterface
         $this->_setMQInfo($topicGroup);
 
         $this->topicGroup = $topicGroup;
-        $this->msgTag = MQHelper::setRocketMQMsgTagExt($msgTag);
+        $this->msgTag = $addMsgTagExt ? MQHelper::setRocketMQMsgTagExt($msgTag) : $msgTag;
         $this->msgKey = $msgKey ?: $this->createMsgKey(); // 如果没有设置消息key，自动生成一个唯一标识
         $this->delayTime = $delayTime;
     }
@@ -94,8 +95,11 @@ class RocketReliableProducer implements MQReliableProducerInterface
      */
     public function simplePublish(array $payload): TopicMessage
     {
-        $this->payload = $payload;
-        $publishRet = $this->_sendMsg();
+        $this->payload = $this->packPayload($payload);
+        $publishRet = $this->_sendMsg(
+            $this->instanceId, $this->topic, $this->payload,
+            $this->msgTag, $this->msgKey, $this->delayTime
+        );
         // 获取到 消息id 视为投递成功
         $this->handleSendMsgAfter($publishRet);
         return $publishRet;
@@ -117,7 +121,7 @@ class RocketReliableProducer implements MQReliableProducerInterface
 
     /**
      * 发布消息
-     * @throws MQException
+     * @throws MQException|\Throwable
      * @author lwz
      */
     public function publishMessage(): TopicMessage
@@ -128,13 +132,16 @@ class RocketReliableProducer implements MQReliableProducerInterface
 
         try {
             // 发送消息
-            $publishRet = $this->_sendMsg();
+            $publishRet = $this->_sendMsg(
+                $this->instanceId, $this->topic, $this->payload,
+                $this->msgTag, $this->msgKey, $this->delayTime
+            );
             // 获取到 消息id 视为投递成功
             $this->handleSendMsgAfter($publishRet);
             return $publishRet;
         } catch (\Throwable $t) {
             self::_handleError($t, $this->msgKey, $this->payload, $this->getMqLogConfig());
-            throw new MQException('消息生成失败');
+            throw $t;
         }
     }
 
@@ -161,57 +168,5 @@ class RocketReliableProducer implements MQReliableProducerInterface
                 );
             }
         }
-    }
-
-    /**
-     * 发送消息
-     * @return TopicMessage
-     * @throws MQException
-     * @author lwz
-     */
-    private function _sendMsg(): TopicMessage
-    {
-        // 获取生产者
-        $producer = RocketMQClient::getInstance()->getClient()->getProducer($this->instanceId, $this->topic);
-
-        // 发布消息
-        $payload = MQHelper::encodeData($this->payload);
-        $publishMessage = new TopicMessage($payload); //消息内容
-        $publishMessage->setMessageTag($this->msgTag);//设置TAG
-        // 设置消息KEY
-        $publishMessage->setMessageKey($this->msgKey);
-        // 延迟时间
-        if ($this->delayTime) {
-            $publishMessage->setStartDeliverTime($this->delayTime * 1000);
-        }
-
-        $publishRet = $producer->publishMessage($publishMessage);
-
-        // 处理消息发送成功的相关操作
-        if ($this->_checkIsProduceSuccess($publishRet)) {
-            // 记录发送日志
-            config('mq.save_produce_log') && $this->getLogDriver()->info(
-                sprintf('消息生产成功。[msg_id] %s; [msg_tag] %s; [msg_key] %s; [msg_body] %s',
-                    $publishRet->getMessageId(), $this->msgTag, $this->msgKey, $payload)
-            );
-        }
-
-        return $publishRet;
-    }
-
-    /**
-     * 获取 MQ 日志的配置信息
-     * @return array
-     * @author lwz
-     */
-    protected function getMqLogConfig(): array
-    {
-        return [
-            'mq_type' => MQConst::TYPE_ROCKETMQ,
-            'topic_group' => $this->topicGroup,
-            'msg_tag' => $this->msgTag,
-            'msg_key' => $this->msgKey,
-            'delay_time' => $this->delayTime,
-        ];
     }
 }

@@ -8,6 +8,7 @@
 namespace Lwz\LaravelExtend\MQ\Services;
 
 
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Lwz\LaravelExtend\MQ\Interfaces\MQStatusLogServiceInterface;
 use Lwz\LaravelExtend\MQ\Models\MQStatusLog;
@@ -35,29 +36,49 @@ class MQStatusLogService implements MQStatusLogServiceInterface
     }
 
     /**
+     * 批量添加待发送状态数据
+     * @param array $data 数据
+     *    mq_uuid: 唯一标识
+     *    mq_config：队列配置
+     *    payload: 消息体
+     * @return mixed
+     * @author lwz
+     */
+    public function addMultiWaitSend(array $data)
+    {
+        return MQStatusLogRepository::insert(array_map(function ($item) {
+            $item = Arr::only($item, ['mq_uuid', 'mq_config', 'payload']);
+            $item['mq_config'] = MQHelper::encodeData($item['mq_config']);
+            $item['payload'] = MQHelper::encodeData($item['payload']);
+            return $item;
+        }, $data));
+    }
+
+    /**
      * 更新消息状态
-     * @param string $mqUuid mq唯一标识
+     * @param string|array $mqUuid mq唯一标识（多个传数组）
      * @param int $status 消息状态
      * @param string|null $updateTime 更新时间（防止延迟队列，消息没有到达指定时间点，被重复投递）
      * @return mixed
      * @author lwz
      */
-    public function updateStatusByMQUuId(string $mqUuid, int $status, ?string $updateTime = null)
+    public function updateStatusByMQUuId($mqUuid, int $status, ?string $updateTime = null)
     {
         $updateData = compact('status');
         $updateTime && $updateData['updated_at'] = $updateTime;
         return MQStatusLogRepository::updateByWhere(['mq_uuid' => $mqUuid], $updateData);
     }
 
+
     /**
      * 通过 uuid 删除消息
-     * @param string $mqUuid mq唯一标识
+     * @param string|array $mqUuid mq唯一标识（多个传数组）
      * @return mixed
      * @auth lwz
      */
-    public function deleteByMQUuid(string $mqUuid)
+    public function deleteByMQUuid($mqUuid)
     {
-        return MQStatusLogRepository::deleteByWhere(['mq_uuid' => $mqUuid]);
+        return MQStatusLogRepository::deleteByMQUuid($mqUuid);
     }
 
     /**

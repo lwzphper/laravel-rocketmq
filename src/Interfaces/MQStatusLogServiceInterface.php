@@ -24,6 +24,17 @@ interface MQStatusLogServiceInterface
     public function addData(string $mqUuid, int $status, array $payload, array $mqConfig): MQStatusLog;
 
     /**
+     * 批量添加待发送状态数据
+     * @param array $data 数据
+     *    mq_uuid: 唯一标识
+     *    mq_config：队列配置
+     *    payload: 消息体
+     * @return mixed
+     * @author lwz
+     */
+    public function addMultiWaitSend(array $data);
+
+    /**
      * 通过id更新数据
      * @param array $ids id
      * @return mixed
@@ -33,21 +44,21 @@ interface MQStatusLogServiceInterface
 
     /**
      * 更新消息状态
-     * @param string $mqUuid mq唯一标识
+     * @param string|array $mqUuid mq唯一标识（多个传数组）
      * @param int $status 消息状态
      * @param string|null $updateTime 更新时间（防止延迟队列，消息没有到达指定时间点，被重复投递）
      * @return mixed
      * @author lwz
      */
-    public function updateStatusByMQUuId(string $mqUuid, int $status, ?string $updateTime = null);
+    public function updateStatusByMQUuId($mqUuid, int $status, ?string $updateTime = null);
 
     /**
      * 通过 uuid 删除消息
-     * @param string $mqUuid mq唯一标识
+     * @param string|array $mqUuid mq唯一标识（多个传数组）
      * @return mixed
      * @auth lwz
      */
-    public function deleteByMQUuid(string $mqUuid);
+    public function deleteByMQUuid($mqUuid);
 
     /**
      * 获取需要重新投递的数据

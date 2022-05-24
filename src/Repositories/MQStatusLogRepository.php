@@ -15,6 +15,29 @@ use Lwz\LaravelExtend\MQ\Models\MQStatusLog;
 class MQStatusLogRepository extends RepositoryAbstract
 {
     protected static string $model = MQStatusLog::class;
+
+    /**
+     * 通过 uuid 删除消息
+     * @param string|array $mqUuid mq唯一标识（多个传数组）
+     * @return mixed
+     * @auth lwz
+     */
+    public static function deleteByMQUuid($mqUuid)
+    {
+        // 批量删除
+        if (is_array($mqUuid)) {
+            return MQStatusLog::whereIn('mq_uuid', $mqUuid)->delete();
+        }
+
+        // 删除单个
+        return self::deleteByWhere(['mq_uuid' => $mqUuid]);
+    }
+
+    public static function updateByMqUuid($mqUuid)
+    {
+
+    }
+
     /**
      * 通过id更新数据
      * @param array $ids id

@@ -20,7 +20,8 @@ class CreateMqStatusLogTable extends Migration
             $table->string('mq_config', 1500)->default('')->comment('mq配置信息（为了兼容各mq）');
             $table->unsignedTinyInteger('retry_num')->default(0)->comment('重试次数');
             $table->text('payload')->nullable()->comment('消息体');
-            $table->timestamps();
+            $table->timestamp('created_at')->useCurrent()->comment('创建时间');
+            $table->timestamp('updated_at')->default(DB::raw('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'))->comment('更新时间');
 
             $table->unique('mq_uuid', 'uk_mq_uuid');
             $table->index('updated_at', 'idx_updated_at');

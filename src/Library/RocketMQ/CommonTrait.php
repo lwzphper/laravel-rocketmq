@@ -9,8 +9,10 @@ namespace Lwz\LaravelExtend\MQ\Library\RocketMQ;
 
 
 use Illuminate\Support\Facades\Log;
+use Lwz\LaravelExtend\MQ\Constants\MQConst;
 use Lwz\LaravelExtend\MQ\Exceptions\MQException;
 use Lwz\LaravelExtend\MQ\Interfaces\MQErrorLogServiceInterface;
+use Lwz\LaravelExtend\MQ\Library\MQHelper;
 use MQ\Model\TopicMessage;
 use Psr\Log\LoggerInterface;
 
@@ -29,6 +31,50 @@ trait CommonTrait
     protected string $topic;
 
     /**
+     * 发送消息
+     * @param string $instanceId 实例id
+     * @param string $topic topic
+     * @param array $payload 消息体
+     * @param string|null $msgTag 消息标签
+     * @param string|null $msgKey 消息key
+     * @param int|null $delayTime 延迟时间
+     * @return TopicMessage
+     * @author lwz
+     */
+    protected function _sendMsg(
+        string $instanceId, string $topic, array $payload,
+        ?string $msgTag = null, ?string $msgKey = null, ?int $delayTime = null
+    ): TopicMessage
+    {
+        // 获取生产者
+        $producer = RocketMQClient::getInstance()->getClient()->getProducer($instanceId, $topic);
+
+        // 发布消息
+        $payload = MQHelper::encodeData($payload);
+        $publishMessage = new TopicMessage($payload); //消息内容
+        $publishMessage->setMessageTag($msgTag);//设置TAG
+        // 设置消息KEY
+        $publishMessage->setMessageKey($msgKey);
+        // 延迟时间
+        if ($delayTime) {
+            $publishMessage->setStartDeliverTime($delayTime * 1000);
+        }
+
+        $publishRet = $producer->publishMessage($publishMessage);
+
+        // 处理消息发送成功的相关操作
+        if ($this->_checkIsProduceSuccess($publishRet)) {
+            // 记录发送日志
+            config('mq.save_produce_log') && $this->getLogDriver()->info(
+                sprintf('消息生产成功。[msg_id] %s; [msg_tag] %s; [msg_key] %s; [msg_body] %s',
+                    $publishRet->getMessageId(), $msgTag, $msgKey, $payload)
+            );
+        }
+
+        return $publishRet;
+    }
+
+    /**
      * 设置MQ信息
      * @param string $topicGroup topic所属分组
      * @throws MQException
@@ -36,10 +82,42 @@ trait CommonTrait
      */
     protected function _setMQInfo(string $topicGroup)
     {
+//        // 获取分组信息
+//        $topicInfo = config('mq.rocketmq.topic_group.' . $topicGroup);
+//        if (empty($topicInfo) || !is_array($topicInfo)) {
+//            throw new MQException('[mq error] 无法找到topic分组信息：' . $topicInfo);
+//        }
+//
+//        // topic不能为空
+//        $topic = $topicInfo['topic'] ?? null;
+//        if (empty($topic)) {
+//            throw new MQException('[mq error] 请配置' . $topicGroup . '分组的topic信息：');
+//        }
+//
+//        $this->instanceId = $topicInfo['instance_id'] ?? null;
+//        $this->topic = $topicInfo['topic'];
+
+        list($this->instanceId, $this->topic) = $this->getTopicInfoOrFail($topicGroup);
+    }
+
+    /**
+     * 获取 topic 信息
+     * @param string $topicGroup topic所属分组
+     * @return array
+     * @author lwz
+     */
+    protected function getTopicInfoOrFail(string $topicGroup): array
+    {
         // 获取分组信息
         $topicInfo = config('mq.rocketmq.topic_group.' . $topicGroup);
         if (empty($topicInfo) || !is_array($topicInfo)) {
             throw new MQException('[mq error] 无法找到topic分组信息：' . $topicInfo);
+        }
+
+        // instanceId 不能为空
+        $instanceId = $topicInfo['instance_id'] ?? null;
+        if (empty($instanceId)) {
+            throw new MQException('[mq error] 请配置' . $topicGroup . '分组的instance_id信息：');
         }
 
         // topic不能为空
@@ -48,8 +126,7 @@ trait CommonTrait
             throw new MQException('[mq error] 请配置' . $topicGroup . '分组的topic信息：');
         }
 
-        $this->instanceId = $topicInfo['instance_id'] ?? null;
-        $this->topic = $topicInfo['topic'];
+        return [$instanceId, $topic];
     }
 
     /**
@@ -93,8 +170,8 @@ trait CommonTrait
         // 记录错误信息
         app(MQErrorLogServiceInterface::class)->addData($msgKey, $payload, $mqConfig, $errMsg);
 
-        // 记录日志文件
-        $this->getLogDriver()->error($errMsg);
+        // 记录日志文件（已经将错误记录到数据库，需要记录到磁盘日志？）
+//        $this->getLogDriver()->error($errMsg);
     }
 
 
@@ -106,6 +183,25 @@ trait CommonTrait
     {
         // 使用 Log::setDefaultDriver() 方法设置驱动，会同时修改业务代码的日志驱动，因此这里单独设置 channel
         return Log::channel(config('mq.log_driver'));
+    }
+
+    /**
+     * 获取 MQ 日志的配置信息
+     * @return array
+     * @author lwz
+     */
+    protected function getMqLogConfig(
+        ?string $topicGroup = null, ?string $msgTag = null,
+        ?string $msgKey = null, ?string $delayTime = null
+    ): array
+    {
+        return [
+            'mq_type' => MQConst::TYPE_ROCKETMQ,
+            'topic_group' => $topicGroup ?? ($this->topicGroup ?? null),
+            'msg_tag' => $msgTag ?? ($this->msgTag ?? null),
+            'msg_key' => $msgKey ?? ($this->msgKey ?? null),
+            'delay_time' => $delayTime ?? ($this->delayTime ?? null),
+        ];
     }
 
     /**

@@ -11,7 +11,9 @@ use Lwz\LaravelExtend\MQ\Constants\MQConst;
 use Lwz\LaravelExtend\MQ\Exceptions\MQException;
 use Lwz\LaravelExtend\MQ\Interfaces\MQReliableConsumerInterface;
 use Lwz\LaravelExtend\MQ\Interfaces\MQReliableProducerInterface;
+use Lwz\LaravelExtend\MQ\Library\RocketMQ\Constant;
 use Lwz\LaravelExtend\MQ\Library\RocketMQ\RocketReliableConsumer;
+use Lwz\LaravelExtend\MQ\Library\RocketMQ\RocketReliableMultiProducer;
 use Lwz\LaravelExtend\MQ\Library\RocketMQ\RocketReliableProducer;
 
 /**
@@ -26,10 +28,11 @@ class MQProducer
      * 获取生产者
      * @param array $params 队列参数
      *   RocketMQ参数：
-     *      topic_group: topic分组名
+     *      topic_group: topic分组名（单条数据发送时，必填）
      *      msg_tag: 消息标签
      *      msg_key: 消息唯一标识（可以做幂等性处理）
      *      delay_time: 延迟时间戳（具体时间的时间戳，如：strotime(2022-10-10 10:32:43)）
+     *      multi_data: true|false 。是否发送多条消息（只支持相同 topic）
      * @return MQReliableProducerInterface
      * @author lwz
      */
@@ -81,10 +84,12 @@ class MQProducer
     /**
      * rocketMQ 生产者
      * @param array $params 请求参数
-     *      topic_group: topic分组名
+     *      topic_group: topic分组名（单条数据发送时，必填）
      *      msg_tag: 消息标签
      *      msg_key: 消息唯一标识（可以做幂等性处理）
      *      delay_time: 延迟时间戳（具体时间的时间戳，如：strotime(2022-10-10 10:32:43)）
+     *      multi_data: true|false 。是否发送多条消息（只支持相同 topic）
+     *      add_msg_tag_ext: true|false 。是否添加消息标签后缀。会覆盖配置文件的选项
      * @return MQReliableProducerInterface
      * @throws MQException
      * @author lwz
@@ -93,11 +98,18 @@ class MQProducer
     {
         self::_checkRocketMQParamsOrFail($params);
 
+        // 批量添加
+        if ($params[Constant::FIELD_MULTI_DATA] ?? null) {
+            return new RocketReliableMultiProducer();
+        }
+
+        // 添加单条
         return new RocketReliableProducer(
-            $params['topic_group'],
-            $params['msg_tag'] ?? null,
-            $params['msg_key'] ?? null,
-            $params['delay_time'] ?? null
+            $params[Constant::FIELD_TOPIC_GROUP],
+            $params[Constant::FIELD_TAG] ?? null,
+            $params[Constant::FIELD_MSG_KEY] ?? null,
+            $params[Constant::FIELD_DELAY_TIME] ?? null,
+            $params[Constant::FIELD_ADD_MSG_TAG_EXT] ?? true,
         );
     }
 
@@ -125,13 +137,20 @@ class MQProducer
     /**
      * 获取 RocketMQ 的消息信息
      * @param array $params 参数
+     *      topic_group: topic分组名（单条数据发送时，必填）
+     *      msg_tag: 消息标签
+     *      msg_key: 消息唯一标识（可以做幂等性处理）
+     *      delay_time: 延迟时间戳（具体时间的时间戳，如：strotime(2022-10-10 10:32:43)）
+     *      multi_data: true|false 。是否发送多条消息（只支持相同 topic）
+     *      add_msg_tag_ext: true|false 。是否添加消息标签后缀。会覆盖配置文件的选项
      * @param bool $isConsume 是否消费消息
      * @author lwz
      */
     protected static function _checkRocketMQParamsOrFail(array $params, bool $isConsume = false)
     {
-        // 必要的参数验证
-        if (empty($params['topic_group'] ?? null)) {
+        $isMultiData = $params[Constant::FIELD_MULTI_DATA] ?? null;
+        // 必要的参数验证（单条数据发送，topic_group 必填）
+        if (!$isMultiData && empty($params['topic_group'] ?? null)) {
             throw new MQException('[mq error] 缺少参数：topic_group');
         }
 

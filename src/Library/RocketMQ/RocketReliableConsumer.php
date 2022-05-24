@@ -7,6 +7,7 @@
 
 namespace Lwz\LaravelExtend\MQ\Library\RocketMQ;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Lwz\LaravelExtend\MQ\Constants\MQConst;
 use Lwz\LaravelExtend\MQ\Exceptions\MQException;
@@ -179,7 +180,7 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
             $receiptHandles = array();
             foreach ($messages as $message) {
                 // 消息句柄有时间戳，同一条消息每次消费拿到的都不一样
-                $receiptHandles[] = $message->getReceiptHandle();
+//                $receiptHandles[] = $message->getReceiptHandle();
 
                 $msgTag = $message->getMessageTag(); // 消息标签
                 $msgKey = $message->getMessageKey(); // 消息唯一标识
@@ -194,6 +195,9 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
                     // 参数一：获取不到 data 设置为 msgBody，主要为了兼容 之前版本
                     $this->mqHandleObj->handle($msgBody[MQConst::KEY_USER_DATA] ?? $msgBody, $msgKey, $msgTag);
 
+                    // 消息句柄有时间戳，同一条消息每次消费拿到的都不一样
+                    $receiptHandles[] = $message->getReceiptHandle();
+
                     // 如果处理消息没有抛出异常，则视为处理成功
                     // 如果配置了消费时删除日志，那么删除发送日志
                     $delSendLogState = $msgBody[MQConst::KEY_DELETE_SEND_LOG_STAGE] ?? null;
@@ -207,6 +211,7 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
                     && $this->getLogDriver()->info(
                         $this->_getLogMsg('[consumer success] 消费信息：', $msgId, $msgTag, $msgKey, $msgBody)
                     );
+
                 } catch (\Throwable $throwable) {
                     /*if ($e instanceof MQ\Exception\AckMessageException) {
                         // 某些消息的句柄可能超时了会导致确认不成功
@@ -221,6 +226,9 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
                     && $this->getLogDriver()->error(
                         $this->_getLogMsg('[consumer error] 消费信息：', $msgId, $msgTag, $msgKey, $msgBody)
                     );
+
+                    // 错误提醒
+                    $this->handleSendErrorMsg($throwable);
                 }
             }
 
@@ -238,6 +246,45 @@ class RocketReliableConsumer implements MQReliableConsumerInterface
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * 发送错误信息
+     * @param \Throwable $t 异常对象
+     * @author lwz
+     */
+    protected function handleSendErrorMsg(\Throwable $t): void
+    {
+        $errMsgMethod = config('mq.sem_method');
+        if (empty($errMsgMethod) || !is_array($errMsgMethod)) {
+            return;
+        }
+
+        $className = $errMsgMethod[0] ?? null;
+        $methodName = $errMsgMethod[1] ?? null;
+        if (class_exists($className, $methodName)) {
+
+            // 校验异常数据是否已发送
+            $errContent = '系统环境：' . env('APP_ENV') . PHP_EOL;
+            $errContent .= '错误消息：【队列消费错误】' . $t->getMessage() . PHP_EOL;
+            $errContent .= 'trace：' . $t->getTraceAsString() . PHP_EOL;
+
+            // 判断是否限制相同错误发送的间隔
+            $cacheKey = null;
+            // 检查是否配置了相同错误发送间隔，没有配置直接发送
+            if ($errorLimit = config('mq.sem_error_limit')) {
+                $cacheKey = 'mq_err_remind_:' . md5($errContent);
+                $cacheData = Cache::get('mq_err_remind_:' . md5($errContent));
+                // 如果redis数据存在，直接跳过
+                if (!is_null($cacheData)) {
+                    return;
+                }
+            }
+
+            (new $className)->$methodName($errContent);
+
+            $errorLimit && Cache::set($cacheKey, '', $errorLimit); // 缓存 60 秒
         }
     }
 

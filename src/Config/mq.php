@@ -17,6 +17,10 @@ return [
     'save_consumer_success_log' => true, // 是否记录消费日志
     'save_consumer_error_log' => true, // 是否记录消费失败日志
 
+    // 发送异常消息配置 sem: send_error_msg
+    'sem_method' => null, // 发送错误信息处理类型。格式：[类名, 方法]
+    'sem_error_limit' => 60, // 相同错误，发送的间隔秒数
+
     /**
      * rocketmq 相关配置。队列关键参数：
      * instance_id => topic => message tag

@@ -90,6 +90,8 @@ return [
 
 #### 2. 生产消息示例
 
+##### 2.1 发送单条
+
 ````php
 // 第一步：创建生产者对象
 $mqObj = app(MQReliableProducerInterface::class,[
@@ -110,6 +112,30 @@ DB::transaction(function () use ($mqObj) {
 // 第三步：将消息推送到队列中
 $mqObj->publishMessage();
 ````
+
+##### 2.2 批量发送
+
+```php
+// 获取MQ对象
+$mqObj = app(MQReliableProducerInterface::class, [
+    'multi_data' => true, // 发送多条数据
+]);
+$mqObj->publishPrepare([
+    [
+        'topic_group' => 'group_test2', // topic 分组
+        'msg_tag' => 'develop_test1', // 消息标签
+        'payload' => ['dfg'], // 消息内容（数组）
+        'delay_time' => null, // 延迟时间（具体的某个时间点，可以不传 或 传 null）
+    ],
+    [
+        'topic_group' => 'group_test1', // topic 分组
+        'msg_tag' => 'develop_test2', // 消息标签
+        'payload' => ['ghj'], // 消息内容（数组）
+        'delay_time' => null, // 延迟时间（具体的某个时间点，可以不传 或 传 null）
+    ],
+]);
+$mqObj->publishMessage();
+```
 
 #### 3. 消费消息示例
 

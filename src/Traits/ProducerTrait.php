@@ -5,12 +5,14 @@
  * @LastEditTime: 2021/12/1 23:15
  */
 declare(strict_types=1);
+
 namespace Lwz\LaravelExtend\MQ\Traits;
 
 use Illuminate\Support\Facades\Log;
 use Lwz\LaravelExtend\MQ\Constants\MQConst;
 use Lwz\LaravelExtend\MQ\Enum\MQStatusLogEnum;
 use Lwz\LaravelExtend\MQ\Interfaces\MQStatusLogServiceInterface;
+use Lwz\LaravelExtend\MQ\Library\MQHelper;
 
 trait ProducerTrait
 {
@@ -33,15 +35,27 @@ trait ProducerTrait
      */
     public function publishPrepare(array $payload)
     {
-        $result = [];
-        $result[MQConst::KEY_USER_DATA] = $payload;
-        // 负载数据加上删除发送日志的时机
-        $result[MQConst::KEY_DELETE_SEND_LOG_STAGE] = config('mq.delete_send_log_stage');
+        $result = $this->packPayload($payload);
         // 设置状态日志id
         $statusLogRet = $this->mqStatusLogSrvApp->addData($this->msgKey, MQStatusLogEnum::STATUS_WAIT_SEND, $result, $this->getMqLogConfig());
         $this->mqStatusId = $statusLogRet->id;
         // 设置消息体
         $this->payload = $result;
+    }
+
+    /**
+     * 打包消息内容
+     * @param array $payload 消息内容
+     * @return array
+     * @author lwz
+     */
+    protected function packPayload(array $payload): array
+    {
+        $result = [];
+        $result[MQConst::KEY_USER_DATA] = $payload;
+        // 负载数据加上删除发送日志的时机
+        $result[MQConst::KEY_DELETE_SEND_LOG_STAGE] = config('mq.delete_send_log_stage');
+        return $result;
     }
 
     /**
@@ -63,16 +77,5 @@ trait ProducerTrait
 
         // 设置 mq 消息状态服务应用类
         $this->mqStatusLogSrvApp = app(MQStatusLogServiceInterface::class);
-    }
-
-    /**
-     * 获取 MQ 日志的配置信息
-     * @return array
-     * @author lwz
-     */
-    protected function getMqLogConfig(): array
-    {
-        return [
-        ];
     }
 }

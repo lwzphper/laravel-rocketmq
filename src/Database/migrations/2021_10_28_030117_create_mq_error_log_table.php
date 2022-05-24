@@ -19,7 +19,8 @@ class CreateMqErrorLogTable extends Migration
             $table->string('mq_config', 1500)->default('')->comment('mq配置信息（为了兼容各mq）');
             $table->text('payload')->nullable()->comment('消息体');
             $table->text('error_msg')->nullable()->comment('异常消息');
-            $table->timestamps();
+            $table->timestamp('created_at')->useCurrent()->comment('创建时间');
+            $table->timestamp('updated_at')->default(DB::raw('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'))->comment('更新时间');
 
             $table->index('mq_uuid', 'idx_mq_uuid');
 

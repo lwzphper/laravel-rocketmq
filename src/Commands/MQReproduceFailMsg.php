@@ -8,6 +8,7 @@ use Lwz\LaravelExtend\MQ\Exceptions\MQException;
 use Lwz\LaravelExtend\MQ\Interfaces\MQReliableProducerInterface;
 use Lwz\LaravelExtend\MQ\Interfaces\MQStatusLogServiceInterface;
 use Lwz\LaravelExtend\MQ\Library\RocketMQ\CommonTrait;
+use Lwz\LaravelExtend\MQ\Library\RocketMQ\Constant;
 
 class MQReproduceFailMsg extends Command
 {
@@ -46,9 +47,9 @@ class MQReproduceFailMsg extends Command
             // 重新投递
             $collection->each(function ($item) {
                 try {
-
                     // 获取配置信息
                     $config = json_decode($item->mq_config, true);
+                    $config[Constant::FIELD_ADD_MSG_TAG_EXT] = false; // 消息标签不添加后缀
                     app(MQReliableProducerInterface::class, $config)->simplePublish(json_decode($item->payload, true));
                 } catch (MQException $exception) {
                     // 捕获异常。如果这里记录日志，如果有异常的话，会不断写入日志文件，导致文件很大
