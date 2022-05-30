@@ -1,4 +1,4 @@
-**目前只支持rocketmq**
+**目前只支持rocketmq（<span style="color:red;">基于阿里云的rocketmq封装</span>）**
 
 ### 可靠投递实现原理
 
